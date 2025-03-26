@@ -124,7 +124,7 @@ def passage_write_step():
     st.text_area("Write the passage from memory:", key="passage_answer", height=150)
 
     # Streamlit 콜백 처리
-    if st.experimental_get_query_params().get("timeup-passage"):
+    if st.query_params.get("timeup-passage"):
         st.session_state.submitted = True
         save_passage_answer()
         move_to_step("email_write")
@@ -165,7 +165,7 @@ def email_write_step():
     st.text_area("Write your email here:", key="email_answer", height=150)
 
     # Streamlit 콜백 처리
-    if st.experimental_get_query_params().get("timeup-email"):
+    if st.query_params.get("timeup-email"):
         st.session_state.submitted = True
         save_email_answer()
         move_to_step("done")
