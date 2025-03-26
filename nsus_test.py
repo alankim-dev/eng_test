@@ -49,10 +49,12 @@ def get_time_left(total_seconds):
     return int(total_seconds - elapsed)
 
 def move_to_step(next_step):
+    st.info(f"move_to_step() called with next_step: {next_step}")  # 디버깅
     st.session_state.step = next_step
     st.session_state.start_time = time.time()
     st.session_state.submitted = False
-    st.rerun()  # 즉시 화면 전환
+    st.info(f"st.session_state.step is now: {st.session_state.step}")  # 디버깅
+    st.rerun()
 
 def post_to_google_sheets(response_text, response_type):
     data = {
@@ -96,7 +98,7 @@ def passage_read_step():
         move_to_step("passage_write")
 
 def passage_write_step():
-    st_autorefresh(interval=1000, limit=120) # 2분 동안 새로고침
+    st_autorefresh(interval=1000, limit=120)
     st.subheader("✍️ Reconstruct the Passage (2 minutes)")
     st.markdown("Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**")
 
@@ -110,15 +112,15 @@ def passage_write_step():
     if time_left <= 0 and not st.session_state.submitted:
         st.info("Time is up! Please submit your answer.")
 
-    if st.button("Submit Answer") and not st.session_state.submitted:
+    if st.button("Submit Answer"):
+        st.info("Passage write Submit Answer button clicked") # 디버깅
         save_passage_answer()
         st.session_state.submitted = True
         st.success("✅ Passage answer has been submitted.")
         move_to_step("email_write")
-        st.rerun() # <<<--- 이 줄을 추가했습니다!
 
 def email_write_step():
-    st_autorefresh(interval=1000, limit=120) # 2분 동안 새로고침
+    st_autorefresh(interval=1000, limit=120)
     st.subheader("📧 Email Writing (2 minutes)")
     st.markdown("Below is a situation. Based on it, write a professional and polite email that requests a one-week extension.")
     st.info(st.session_state.selected_email)
@@ -133,17 +135,18 @@ def email_write_step():
     if time_left <= 0 and not st.session_state.submitted:
         st.info("Time is up! Please submit your answer.")
 
-    if st.button("Submit Answer") and not st.session_state.submitted:
+    if st.button("Submit Answer"):
+        st.info("Email write Submit Answer button clicked") # 디버깅
         save_email_answer()
         st.session_state.submitted = True
         st.success("✅ Email answer has been submitted.")
         move_to_step("done")
-        st.rerun() # <<<--- 이 줄을 추가했습니다!
 
 def done_step():
     st.success("🎉 All tasks are complete! Well done!")
 
 # ========== 단계별 실행 ==========
+st.info(f"Current step: {st.session_state.step}") # 디버깅
 if st.session_state.step == "intro":
     intro_step()
 elif st.session_state.step == "passage_read":
