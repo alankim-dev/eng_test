@@ -53,7 +53,8 @@ def move_to_step(next_step):
     st.session_state.step = next_step
     st.session_state.start_time = time.time()
     st.session_state.submitted = False
-    st.rerun()  # <---- 여기를 수정했습니다.
+    st.info(f"st.session_state.step is now: {st.session_state.step}")  # 디버깅
+    st.rerun()
 
 def post_to_google_sheets(response_text, response_type):
     data = {
@@ -107,7 +108,7 @@ def passage_write_step():
     st.write(f"Time left: **{time_left}** seconds")
 
     with st.form("passage_form"):
-        passage_answer = st.text_area("Write the passage from memory:", key="passage_answer", height=150)
+        passage_answer = st.text_area("Write the passage from memory:", key="passage_answer_input", height=150) # key 값 변경
         if time_left <= 0 and not st.session_state.submitted:
             st.info("Time is up! Please submit your answer.")
         submit_button = st.form_submit_button("Submit Answer")
@@ -132,7 +133,7 @@ def email_write_step():
     st.write(f"Time left: **{time_left}** seconds")
 
     with st.form("email_form"):
-        email_answer = st.text_area("Write your email here:", key="email_answer", height=150)
+        email_answer = st.text_area("Write your email here:", key="email_answer_input", height=150) # key 값 변경
         if time_left <= 0 and not st.session_state.submitted:
             st.info("Time is up! Please submit your answer.")
         submit_button = st.form_submit_button("Submit Answer")
