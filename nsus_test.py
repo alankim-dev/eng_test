@@ -115,6 +115,7 @@ def passage_write_step():
         st.session_state.submitted = True
         st.success("✅ Passage answer has been submitted.")
         move_to_step("email_write")
+        st.rerun() # <<<--- 이 줄을 추가했습니다!
 
 def email_write_step():
     st_autorefresh(interval=1000, limit=120) # 2분 동안 새로고침
@@ -137,6 +138,7 @@ def email_write_step():
         st.session_state.submitted = True
         st.success("✅ Email answer has been submitted.")
         move_to_step("done")
+        st.rerun() # <<<--- 이 줄을 추가했습니다!
 
 def done_step():
     st.success("🎉 All tasks are complete! Well done!")
