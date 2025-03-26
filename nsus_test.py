@@ -50,7 +50,7 @@ def move_to_step(next_step):
     st.session_state.step = next_step
     st.session_state.start_time = time.time()  # 새로운 단계 진입 시 타이머 재설정
     st.session_state.submitted = False
-    # 쿼리 파라미터도 초기화 (자동제출 등 방지)
+    # 쿼리 파라미터 초기화 (자동 제출 등 방지)
     st.experimental_set_query_params()
 
 def post_to_google_sheets(response_text, response_type):
@@ -83,8 +83,8 @@ def passage_read_step():
     """
     1. 30초 동안 지문을 보여준다.
     2. 30초 후 자동으로 passage_write_step()으로 넘어간다.
-    - 이때 st_autorefresh를 사용하여 1초마다 페이지 갱신.
-    - st.experimental_rerun()을 직접 호출하지 않고, time_left <= 0이면 바로 move_to_step.
+       - st_autorefresh(interval=1000)를 사용하여 1초마다 페이지 갱신.
+       - st.experimental_rerun()을 직접 호출하지 않고, time_left <= 0이면 바로 move_to_step.
     """
     st.subheader("📄 Passage Reconstruction (Reading)")
     st.markdown("You have **30 seconds** to read the passage. Then it will disappear.")
