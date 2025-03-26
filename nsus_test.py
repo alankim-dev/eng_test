@@ -3,6 +3,7 @@ import time
 import random
 import requests
 import json
+from streamlit_autorefresh import st_autorefresh
 
 # Google Apps Script 웹앱 URL
 GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbxHUtX406TMnBYKAk2MYwKsWpSn02FPC5hNfXWV6fx6eRO7vH5rn3rgXBlJ4-Ld3d95/exec"
@@ -36,10 +37,6 @@ def initialize_session_state():
     if "email_answer" not in st.session_state:
         st.session_state.email_answer = ""
 
-initialize_session_state()
-
-st.title("NSUS English Test")
-
 # ========== 유틸 함수들 ==========
 def get_time_left(total_seconds):
     if st.session_state.start_time is None:
@@ -48,6 +45,7 @@ def get_time_left(total_seconds):
     return int(total_seconds - elapsed)
 
 def move_to_step(next_step):
+    st.info(f"move_to_step() called with next_step: {next_step}")  # 디버깅
     st.session_state.step = next_step
     st.session_state.start_time = time.time()
     st.session_state.submitted = False
@@ -66,10 +64,10 @@ def post_to_google_sheets(response_text, response_type):
         return None
 
 def save_passage_answer():
-    post_to_google_sheets(st.session_state["passage_answer"], "passage")
+    post_to_google_sheets(st.session_state.get("passage_answer", ""), "passage")
 
 def save_email_answer():
-    post_to_google_sheets(st.session_state["email_answer"], "email")
+    post_to_google_sheets(st.session_state.get("email_answer", ""), "email")
 
 # ========== 단계별 로직 ==========
 
@@ -126,7 +124,7 @@ def passage_write_step():
     st.text_area("Write the passage from memory:", key="passage_answer", height=150)
 
     # Streamlit 콜백 처리
-    if st.query_params.get("timeup-passage"): # 수정
+    if st.experimental_get_query_params().get("timeup-passage"):
         st.session_state.submitted = True
         save_passage_answer()
         move_to_step("email_write")
@@ -167,7 +165,7 @@ def email_write_step():
     st.text_area("Write your email here:", key="email_answer", height=150)
 
     # Streamlit 콜백 처리
-    if st.query_params.get("timeup-email"): # 수정
+    if st.experimental_get_query_params().get("timeup-email"):
         st.session_state.submitted = True
         save_email_answer()
         move_to_step("done")
@@ -182,13 +180,21 @@ def done_step():
     st.success("🎉 All tasks are complete! Well done!")
 
 # ========== 단계별 실행 ==========
-if st.session_state.step == "intro":
-    intro_step()
-elif st.session_state.step == "passage_read":
-    passage_read_step()
-elif st.session_state.step == "passage_write":
-    passage_write_step()
-elif st.session_state.step == "email_write":
-    email_write_step()
-elif st.session_state.step == "done":
-    done_step()
+def main():
+    initialize_session_state()
+    st.title("NSUS English Test")
+
+    st.info(f"Current step: {st.session_state.step}")
+    if st.session_state.step == "intro":
+        intro_step()
+    elif st.session_state.step == "passage_read":
+        passage_read_step()
+    elif st.session_state.step == "passage_write":
+        passage_write_step()
+    elif st.session_state.step == "email_write":
+        email_write_step()
+    elif st.session_state.step == "done":
+        done_step()
+
+if __name__ == "__main__":
+    main()
