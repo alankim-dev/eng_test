@@ -43,6 +43,7 @@ initialize_session_state()
 st.title("NSUS English Test")
 
 # ========== 유틸 함수들 ==========
+
 def get_time_left(total_seconds):
     if st.session_state.start_time is None:
         return total_seconds
@@ -50,12 +51,15 @@ def get_time_left(total_seconds):
     return int(total_seconds - elapsed)
 
 def move_to_step(next_step):
+    """단계를 전환하고 화면을 즉시 새로고침."""
     st.session_state.step = next_step
     st.session_state.start_time = time.time()
     st.session_state.submitted = False
-    st.experimental_rerun()  # 즉시 화면 전환
+    # st.experimental_rerun() 대신 st.rerun() 사용
+    st.rerun()
 
 def post_to_google_sheets(response_text, response_type):
+    """Google Apps Script 웹앱으로 POST 요청을 보내 Sheet에 저장."""
     data = {
         "response": response_text.strip(),
         "type": response_type  # "passage" 또는 "email"
@@ -96,14 +100,13 @@ def passage_read_step():
     if time_left <= 0 and not st.session_state.submitted:
         st.session_state.submitted = True
         move_to_step("passage_write")
-        # st.stop() 대신 rerun로 자연 전환
 
 def passage_write_step():
     st_autorefresh(interval=1000, limit=0)
     st.subheader("✍️ Reconstruct the Passage (2 minutes)")
     st.markdown("Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**")
     
-    time_left = get_time_left(120)  # 2분 = 120초
+    time_left = get_time_left(120)  # 2분
     if time_left < 0:
         time_left = 0
     st.write(f"Time left: **{time_left}** seconds")
@@ -119,7 +122,6 @@ def passage_write_step():
         st.session_state.submitted = True
         st.success("✅ Passage answer has been submitted.")
         move_to_step("email_write")
-        # st.stop() 대신 rerun
 
 def email_write_step():
     st_autorefresh(interval=1000, limit=0)
@@ -127,7 +129,7 @@ def email_write_step():
     st.markdown("Below is a situation. Based on it, write a professional and polite email that requests a one-week extension.")
     st.info(st.session_state.selected_email)
     
-    time_left = get_time_left(120)  # 2분 = 120초
+    time_left = get_time_left(120)  # 2분
     if time_left < 0:
         time_left = 0
     st.write(f"Time left: **{time_left}** seconds")
@@ -143,7 +145,6 @@ def email_write_step():
         st.session_state.submitted = True
         st.success("✅ Email answer has been submitted.")
         move_to_step("done")
-        # st.stop() 대신 rerun
 
 def done_step():
     st.success("🎉 All tasks are complete! Well done!")
