@@ -40,7 +40,6 @@ def initialize_session_state():
 
 initialize_session_state()
 
-# Test 제목 변경
 st.title("NSUS English Test")
 
 # ========== 유틸 함수들 ==========
@@ -54,15 +53,15 @@ def move_to_step(next_step):
     st.session_state.step = next_step
     st.session_state.start_time = time.time()
     st.session_state.submitted = False
+    st.experimental_rerun()  # 즉시 화면 전환
 
 def post_to_google_sheets(response_text, response_type):
     data = {
         "response": response_text.strip(),
-        "type": response_type  # 예: "passage" 또는 "email"
+        "type": response_type  # "passage" 또는 "email"
     }
     try:
         r = requests.post(GOOGLE_SHEETS_URL, data=json.dumps(data))
-        # 성공 시 JSON 응답 (예: {"result": "success"})를 반환받을 수 있습니다.
         return r.json()
     except Exception as e:
         st.error(f"Error saving {response_type} answer: {e}")
@@ -93,11 +92,11 @@ def passage_read_step():
         time_left = 0
     st.write(f"Time left: **{time_left}** seconds")
     
-    # 시간이 다 되면 자동으로 다음 단계로 이동
+    # 시간이 다 되면 다음 단계로 전환
     if time_left <= 0 and not st.session_state.submitted:
         st.session_state.submitted = True
         move_to_step("passage_write")
-        st.stop()
+        # st.stop() 대신 rerun로 자연 전환
 
 def passage_write_step():
     st_autorefresh(interval=1000, limit=0)
@@ -120,7 +119,7 @@ def passage_write_step():
         st.session_state.submitted = True
         st.success("✅ Passage answer has been submitted.")
         move_to_step("email_write")
-        st.stop()
+        # st.stop() 대신 rerun
 
 def email_write_step():
     st_autorefresh(interval=1000, limit=0)
@@ -144,7 +143,7 @@ def email_write_step():
         st.session_state.submitted = True
         st.success("✅ Email answer has been submitted.")
         move_to_step("done")
-        st.stop()
+        # st.stop() 대신 rerun
 
 def done_step():
     st.success("🎉 All tasks are complete! Well done!")
