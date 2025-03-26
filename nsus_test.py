@@ -32,7 +32,6 @@ def initialize_session_state():
         st.session_state.start_time = None
     if "submitted" not in st.session_state:
         st.session_state.submitted = False
-    # 입력값은 위젯 key에 의해 자동 저장됨.
     if "passage_answer" not in st.session_state:
         st.session_state.passage_answer = ""
     if "email_answer" not in st.session_state:
@@ -82,39 +81,38 @@ def intro_step():
         move_to_step("passage_read")
 
 def passage_read_step():
-    # autorefresh는 제출되지 않은 상태일 때만 호출
     if not st.session_state.submitted:
-        st_autorefresh(interval=1000, limit=0)
+        st_autorefresh(interval=1000, limit=30) # 읽기 단계 30초 제한
     st.subheader("📄 Passage Reconstruction (Reading)")
     st.markdown("You have **30 seconds** to read the passage. Then it will disappear.")
     st.info(st.session_state.selected_passage)
-    
+
     time_left = get_time_left(30)
     if time_left < 0:
         time_left = 0
     st.write(f"Time left: **{time_left}** seconds")
-    
+
     if time_left <= 0 and not st.session_state.submitted:
         st.session_state.submitted = True
         move_to_step("passage_write")
 
 def passage_write_step():
     if not st.session_state.submitted:
-        st_autorefresh(interval=1000, limit=0)
+        st_autorefresh(interval=1000, limit=120) # 쓰기 단계 120초 제한
     st.subheader("✍️ Reconstruct the Passage (2 minutes)")
     st.markdown("Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**")
-    
+
     time_left = get_time_left(120)
     if time_left < 0:
         time_left = 0
     st.write(f"Time left: **{time_left}** seconds")
-    
+
     disabled_flag = (time_left <= 0)
     st.text_area("Write the passage from memory:", key="passage_answer", height=150, disabled=disabled_flag)
-    
+
     if disabled_flag and not st.session_state.submitted:
         st.info("Time is up! The response area is now disabled. Please click [Submit Answer] to submit your response.")
-    
+
     if st.button("Submit Answer") and not st.session_state.submitted:
         save_passage_answer()
         st.session_state.submitted = True
@@ -123,22 +121,22 @@ def passage_write_step():
 
 def email_write_step():
     if not st.session_state.submitted:
-        st_autorefresh(interval=1000, limit=0)
+        st_autorefresh(interval=1000, limit=120) # 이메일 쓰기 단계 120초 제한
     st.subheader("📧 Email Writing (2 minutes)")
     st.markdown("Below is a situation. Based on it, write a professional and polite email that requests a one-week extension.")
     st.info(st.session_state.selected_email)
-    
+
     time_left = get_time_left(120)
     if time_left < 0:
         time_left = 0
     st.write(f"Time left: **{time_left}** seconds")
-    
+
     disabled_flag = (time_left <= 0)
     st.text_area("Write your email here:", key="email_answer", height=150, disabled=disabled_flag)
-    
+
     if disabled_flag and not st.session_state.submitted:
         st.info("Time is up! The email input is disabled. Please click [Submit Answer] to submit your response.")
-    
+
     if st.button("Submit Answer") and not st.session_state.submitted:
         save_email_answer()
         st.session_state.submitted = True
@@ -147,7 +145,6 @@ def email_write_step():
 
 def done_step():
     st.success("🎉 All tasks are complete! Well done!")
-    # 완료 단계에서는 autorefresh를 사용하지 않음.
 
 # ========== 단계별 실행 ==========
 if st.session_state.step == "intro":
