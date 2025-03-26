@@ -3,7 +3,6 @@ import time
 import random
 import requests
 import json
-from streamlit_autorefresh import st_autorefresh
 
 # Google Apps Script 웹앱 URL
 GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbxHUtX406TMnBYKAk2MYwKsWpSn02FPC5hNfXWV6fx6eRO7vH5rn3rgXBlJ4-Ld3d95/exec"
@@ -49,11 +48,10 @@ def get_time_left(total_seconds):
     return int(total_seconds - elapsed)
 
 def move_to_step(next_step):
-    st.info(f"move_to_step() called with next_step: {next_step}")  # 디버깅
     st.session_state.step = next_step
     st.session_state.start_time = time.time()
     st.session_state.submitted = False
-    st.rerun()  # <---- 여기를 수정했습니다.
+    st.rerun()
 
 def post_to_google_sheets(response_text, response_type):
     data = {
@@ -68,10 +66,10 @@ def post_to_google_sheets(response_text, response_type):
         return None
 
 def save_passage_answer():
-    post_to_google_sheets(st.session_state.get("passage_answer", ""), "passage")
+    post_to_google_sheets(st.session_state["passage_answer"], "passage")
 
 def save_email_answer():
-    post_to_google_sheets(st.session_state.get("email_answer", ""), "email")
+    post_to_google_sheets(st.session_state["email_answer"], "email")
 
 # ========== 단계별 로직 ==========
 
@@ -115,24 +113,23 @@ def passage_write_step():
         if(timeLeft <= 0){{
             clearInterval(interval);
             // Streamlit에 이벤트 전달
-            var event = new Event('timeup-passage');
-            document.dispatchEvent(event);
+            fetch('/timeup-passage', {{ method: 'POST' }})
+              .then(() => {{
+                // Streamlit 앱에 이벤트 전달 성공
+              }});
         }}
     }}, 1000);
-
-    // Streamlit 이벤트 리스너
-    document.addEventListener('timeup-passage', function (e) {{
-        // 숨겨진 제출 버튼 클릭
-        document.getElementById('hidden_submit_passage').click();
-    }});
     </script>
     """
     st.markdown(js_code, unsafe_allow_html=True)
 
     st.text_area("Write the passage from memory:", key="passage_answer", height=150)
 
-    # 숨겨진 제출 버튼
-    st.markdown("<style>#hidden_submit_passage {display: none;}</style>", unsafe_allow_html=True)
+    # Streamlit 콜백 처리
+    if st.experimental_get_query_params().get("timeup-passage"):
+        st.session_state.submitted = True
+        save_passage_answer()
+        move_to_step("email_write")
 
     if st.button("Submit Answer", key="hidden_submit_passage"):
         save_passage_answer()
@@ -157,23 +154,23 @@ def email_write_step():
         if(timeLeftEmail <= 0){{
             clearInterval(intervalEmail);
             // Streamlit에 이벤트 전달
-            var eventEmail = new Event('timeup-email');
-            document.dispatchEvent(eventEmail);
+            fetch('/timeup-email', {{ method: 'POST' }})
+              .then(() => {{
+                // Streamlit 앱에 이벤트 전달 성공
+              }});
         }}
     }}, 1000);
-
-    // Streamlit 이벤트 리스너
-    document.addEventListener('timeup-email', function (e) {{
-        // 숨겨진 제출 버튼 클릭
-        document.getElementById('hidden_submit_email').click();
-    }});
     </script>
     """
     st.markdown(js_code_email, unsafe_allow_html=True)
 
     st.text_area("Write your email here:", key="email_answer", height=150)
 
-    st.markdown("<style>#hidden_submit_email {display: none;}</style>", unsafe_allow_html=True)
+    # Streamlit 콜백 처리
+    if st.experimental_get_query_params().get("timeup-email"):
+        st.session_state.submitted = True
+        save_email_answer()
+        move_to_step("done")
 
     if st.button("Submit Answer", key="hidden_submit_email"):
         save_email_answer()
@@ -185,7 +182,6 @@ def done_step():
     st.success("🎉 All tasks are complete! Well done!")
 
 # ========== 단계별 실행 ==========
-st.info(f"Current step: {st.session_state.step}")
 if st.session_state.step == "intro":
     intro_step()
 elif st.session_state.step == "passage_read":
