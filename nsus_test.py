@@ -117,18 +117,22 @@ def passage_write_step():
 
     if disabled_flag and not st.session_state.submitted:
         st.info("Passage write time expired") # 디버깅 출력
-        if st.button("Submit Answer (Time Expired)"):
+        if st.button("Submit Answer (Time Expired)", key="submit_passage_expired"):
             save_passage_answer()
-            st.session_state.submitted = True
+            st.session_state["submitted"] = True
             st.success("✅ Passage answer has been submitted.")
-            move_to_step("email_write")
+            st.session_state["step"] = "email_write"
+            st.session_state["start_time"] = time.time()
+            st.rerun()
 
-    if st.button("Submit Answer") and not st.session_state.submitted:
+    if st.button("Submit Answer", key="submit_passage") and not st.session_state.submitted:
         st.info("Passage write Submit Answer button clicked") # 디버깅 출력
         save_passage_answer()
-        st.session_state.submitted = True
+        st.session_state["submitted"] = True
         st.success("✅ Passage answer has been submitted.")
-        move_to_step("email_write")
+        st.session_state["step"] = "email_write"
+        st.session_state["start_time"] = time.time()
+        st.rerun()
     st.info(f"Current step in passage_write: {st.session_state.step}, Submitted: {st.session_state.submitted}, Time Left: {time_left}") # 디버깅 출력
 
 def email_write_step():
@@ -148,18 +152,22 @@ def email_write_step():
 
     if disabled_flag and not st.session_state.submitted:
         st.info("Email write time expired") # 디버깅 출력
-        if st.button("Submit Answer (Time Expired)"):
+        if st.button("Submit Answer (Time Expired)", key="submit_email_expired"):
             save_email_answer()
-            st.session_state.submitted = True
+            st.session_state["submitted"] = True
             st.success("✅ Email answer has been submitted.")
-            move_to_step("done")
+            st.session_state["step"] = "done"
+            st.session_state["start_time"] = time.time()
+            st.rerun()
 
-    if st.button("Submit Answer") and not st.session_state.submitted:
+    if st.button("Submit Answer", key="submit_email") and not st.session_state.submitted:
         st.info("Email write Submit Answer button clicked") # 디버깅 출력
         save_email_answer()
-        st.session_state.submitted = True
+        st.session_state["submitted"] = True
         st.success("✅ Email answer has been submitted.")
-        move_to_step("done")
+        st.session_state["step"] = "done"
+        st.session_state["start_time"] = time.time()
+        st.rerun()
     st.info(f"Current step in email_write: {st.session_state.step}, Submitted: {st.session_state.submitted}, Time Left: {time_left}") # 디버깅 출력
 
 def done_step():
