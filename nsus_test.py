@@ -47,7 +47,7 @@ def get_time_left(total_seconds):
 def move_to_step(next_step):
     st.info(f"move_to_step() called with next_step: {next_step}")  # 디버깅
     st.session_state.step = next_step
-    st.session_state.start_time = time.time()
+    st.session_state.start_time = time.time()  # 새로운 단계마다 타이머 재설정
     st.session_state.submitted = False
     st.rerun()
 
@@ -78,7 +78,7 @@ def intro_step():
         move_to_step("passage_read")
 
 def passage_read_step():
-    # 1초마다 새로고침 (서버 측 타이머)
+    # 1초마다 새로고침 (서버 사이드 타이머)
     st_autorefresh(interval=1000, limit=0)
     st.subheader("📄 Passage Reconstruction (Reading)")
     st.markdown("You have **30 seconds** to read the passage. Then it will disappear.")
@@ -99,32 +99,19 @@ def passage_write_step():
     st.markdown("Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**")
 
     total_time = 120  # 2분 = 120초
-    # 한 번만 실행되는 자바스크립트 타이머: st_autorefresh 없이 사용
-    st.markdown(f"<div id='countdown_passage'>Time left: {total_time} seconds</div>", unsafe_allow_html=True)
-    js_code = f"""
-    <script>
-    var timeLeft = {total_time};
-    var countdownElem = document.getElementById('countdown_passage');
-    var interval = setInterval(function(){{
-        timeLeft--;
-        countdownElem.innerHTML = "Time left: " + timeLeft + " seconds";
-        if(timeLeft <= 0){{
-            clearInterval(interval);
-            // Streamlit에 이벤트 전달
-            fetch('/timeup-passage', {{ method: 'POST' }})
-              .then(() => {{
-                // Streamlit 앱에 이벤트 전달 성공
-              }});
-        }}
-    }}, 1000);
-    </script>
-    """
-    st.markdown(js_code, unsafe_allow_html=True)
+    # 타이머 초기화 (만약 아직 start_time이 없다면)
+    if st.session_state.start_time is None:
+        st.session_state.start_time = time.time()
+    time_left = get_time_left(total_time)
+    if time_left < 0:
+        time_left = 0
+    st.write(f"Time left: **{time_left}** seconds")
+    st_autorefresh(interval=1000, limit=0)
 
     st.text_area("Write the passage from memory:", key="passage_answer", height=150)
 
-    # Streamlit 콜백 처리
-    if st.query_params.get("timeup-passage"):
+    # 남은 시간이 0초이면 자동 제출
+    if time_left <= 0 and not st.session_state.submitted:
         st.session_state.submitted = True
         save_passage_answer()
         move_to_step("email_write")
@@ -141,31 +128,18 @@ def email_write_step():
     st.info(st.session_state.selected_email)
 
     total_time = 120  # 2분 = 120초
-    st.markdown(f"<div id='countdown_email'>Time left: {total_time} seconds</div>", unsafe_allow_html=True)
-    js_code_email = f"""
-    <script>
-    var timeLeftEmail = {total_time};
-    var countdownElemEmail = document.getElementById('countdown_email');
-    var intervalEmail = setInterval(function(){{
-        timeLeftEmail--;
-        countdownElemEmail.innerHTML = "Time left: " + timeLeftEmail + " seconds";
-        if(timeLeftEmail <= 0){{
-            clearInterval(intervalEmail);
-            // Streamlit에 이벤트 전달
-            fetch('/timeup-email', {{ method: 'POST' }})
-              .then(() => {{
-                // Streamlit 앱에 이벤트 전달 성공
-              }});
-        }}
-    }}, 1000);
-    </script>
-    """
-    st.markdown(js_code_email, unsafe_allow_html=True)
+    if st.session_state.start_time is None:
+        st.session_state.start_time = time.time()
+    time_left = get_time_left(total_time)
+    if time_left < 0:
+        time_left = 0
+    st.write(f"Time left: **{time_left}** seconds")
+    st_autorefresh(interval=1000, limit=0)
 
     st.text_area("Write your email here:", key="email_answer", height=150)
 
-    # Streamlit 콜백 처리
-    if st.query_params.get("timeup-email"):
+    # 남은 시간이 0초이면 자동 제출
+    if time_left <= 0 and not st.session_state.submitted:
         st.session_state.submitted = True
         save_email_answer()
         move_to_step("done")
