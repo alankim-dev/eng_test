@@ -32,7 +32,6 @@ def initialize_session_state():
         st.session_state.start_time = None
     if "submitted" not in st.session_state:
         st.session_state.submitted = False
-    # 입력값은 위젯 key에 의해 자동 저장됨.
     if "passage_answer" not in st.session_state:
         st.session_state.passage_answer = ""
     if "email_answer" not in st.session_state:
@@ -43,7 +42,6 @@ initialize_session_state()
 st.title("NSUS English Test")
 
 # ========== 유틸 함수들 ==========
-
 def get_time_left(total_seconds):
     if st.session_state.start_time is None:
         return total_seconds
@@ -51,15 +49,12 @@ def get_time_left(total_seconds):
     return int(total_seconds - elapsed)
 
 def move_to_step(next_step):
-    """단계를 전환하고 화면을 즉시 새로고침."""
     st.session_state.step = next_step
     st.session_state.start_time = time.time()
     st.session_state.submitted = False
-    # st.experimental_rerun() 대신 st.rerun() 사용
-    st.rerun()
+    st.rerun()  # 즉시 화면 전환
 
 def post_to_google_sheets(response_text, response_type):
-    """Google Apps Script 웹앱으로 POST 요청을 보내 Sheet에 저장."""
     data = {
         "response": response_text.strip(),
         "type": response_type  # "passage" 또는 "email"
@@ -147,6 +142,7 @@ def email_write_step():
         move_to_step("done")
 
 def done_step():
+    # "Done" 단계에서는 autorefresh를 사용하지 않습니다.
     st.success("🎉 All tasks are complete! Well done!")
 
 # ========== 단계별 실행 ==========
