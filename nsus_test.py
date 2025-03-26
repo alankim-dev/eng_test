@@ -13,7 +13,7 @@ passages = [
     "Our new product line will be launched next month. We are planning a series of promotional events to increase awareness. All team members are expected to contribute ideas for marketing strategies. Please submit your suggestions by Friday afternoon.",
     "We have recently updated our internal communication guidelines to ensure that everyone stays informed and aligned. Managers are responsible for sharing weekly updates with their teams. Please check your email every Monday morning for the latest announcements and summaries.",
     "To improve cross-functional collaboration, we will be launching a new project management tool starting next week. Training sessions will be provided on Wednesday and Thursday. Attendance is mandatory for all team members who manage or participate in projects.",
-    "The finance team is conducting the quarterly budget review, and all departments must submit their expense reports by the end of this week. Delayed submissions may result in your department's budget being frozen until the next quarter.",
+    "The finance team is conducting the quarterly budget review, and all departments must submit their expense reports by Friday afternoon.",
     "Customer feedback has shown a strong interest in faster response times. To address this, we are adjusting our support team shifts starting Monday. Please review the updated schedule and confirm your availability with your manager by Friday."
 ]
 email_tasks = [
@@ -69,10 +69,10 @@ def post_to_google_sheets(response_text, response_type):
         return None
 
 def save_passage_answer():
-    post_to_google_sheets(st.session_state["passage_answer"], "passage")
+    post_to_google_sheets(st.session_state.get("passage_answer", ""), "passage")
 
 def save_email_answer():
-    post_to_google_sheets(st.session_state["email_answer"], "email")
+    post_to_google_sheets(st.session_state.get("email_answer", ""), "email")
 
 # ========== 단계별 로직 ==========
 
@@ -107,13 +107,15 @@ def passage_write_step():
         time_left = 0
     st.write(f"Time left: **{time_left}** seconds")
 
-    st.text_area("Write the passage from memory:", key="passage_answer", height=150)
+    with st.form("passage_form"):
+        passage_answer = st.text_area("Write the passage from memory:", key="passage_answer", height=150)
+        if time_left <= 0 and not st.session_state.submitted:
+            st.info("Time is up! Please submit your answer.")
+        submit_button = st.form_submit_button("Submit Answer")
 
-    if time_left <= 0 and not st.session_state.submitted:
-        st.info("Time is up! Please submit your answer.")
-
-    if st.button("Submit Answer"):
-        st.info("Passage write Submit Answer button clicked") # 디버깅
+    if submit_button:
+        st.info("Passage write Submit Answer button clicked")  # 디버깅
+        st.session_state["passage_answer"] = passage_answer  # 입력값 저장
         save_passage_answer()
         st.session_state.submitted = True
         st.success("✅ Passage answer has been submitted.")
@@ -130,13 +132,15 @@ def email_write_step():
         time_left = 0
     st.write(f"Time left: **{time_left}** seconds")
 
-    st.text_area("Write your email here:", key="email_answer", height=150)
+    with st.form("email_form"):
+        email_answer = st.text_area("Write your email here:", key="email_answer", height=150)
+        if time_left <= 0 and not st.session_state.submitted:
+            st.info("Time is up! Please submit your answer.")
+        submit_button = st.form_submit_button("Submit Answer")
 
-    if time_left <= 0 and not st.session_state.submitted:
-        st.info("Time is up! Please submit your answer.")
-
-    if st.button("Submit Answer"):
-        st.info("Email write Submit Answer button clicked") # 디버깅
+    if submit_button:
+        st.info("Email write Submit Answer button clicked")  # 디버깅
+        st.session_state["email_answer"] = email_answer  # 입력값 저장
         save_email_answer()
         st.session_state.submitted = True
         st.success("✅ Email answer has been submitted.")
@@ -146,7 +150,7 @@ def done_step():
     st.success("🎉 All tasks are complete! Well done!")
 
 # ========== 단계별 실행 ==========
-st.info(f"Current step: {st.session_state.step}") # 디버깅
+st.info(f"Current step: {st.session_state.step}")  # 디버깅
 if st.session_state.step == "intro":
     intro_step()
 elif st.session_state.step == "passage_read":
