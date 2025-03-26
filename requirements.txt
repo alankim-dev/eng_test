@@ -28,8 +28,8 @@ requests==2.32.3
 rpds-py==0.23.1
 six==1.17.0
 smmap==5.0.2
-streamlit>=1.10.0
-streamlit-autorefresh==1.0.1
+streamlit
+streamlit-autorefresh
 tenacity==9.0.0
 toml==0.10.2
 tornado==6.4.2
