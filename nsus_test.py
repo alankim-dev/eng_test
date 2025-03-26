@@ -1,7 +1,12 @@
 import streamlit as st
 import time
 import random
+import requests
+import json
 from streamlit_autorefresh import st_autorefresh
+
+# Google Apps Script 웹앱 URL
+GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbxHUtX406TMnBYKAk2MYwKsWpSn02FPC5hNfXWV6fx6eRO7vH5rn3rgXBlJ4-Ld3d95/exec"
 
 # ========== 예시 지문 및 이메일 과제 ==========
 passages = [
@@ -50,13 +55,24 @@ def move_to_step(next_step):
     st.session_state.start_time = time.time()
     st.session_state.submitted = False
 
+def post_to_google_sheets(response_text, response_type):
+    data = {
+        "response": response_text.strip(),
+        "type": response_type  # 예: "passage" 또는 "email"
+    }
+    try:
+        r = requests.post(GOOGLE_SHEETS_URL, data=json.dumps(data))
+        # 성공 시 JSON 응답 (예: {"result": "success"})를 반환받을 수 있습니다.
+        return r.json()
+    except Exception as e:
+        st.error(f"Error saving {response_type} answer: {e}")
+        return None
+
 def save_passage_answer():
-    with open("passage_answers.txt", "a", encoding="utf-8") as f:
-        f.write(st.session_state["passage_answer"].strip() + "\t" + time.strftime("%Y-%m-%d %H:%M:%S") + "\n")
+    post_to_google_sheets(st.session_state["passage_answer"], "passage")
 
 def save_email_answer():
-    with open("email_answers.txt", "a", encoding="utf-8") as f:
-        f.write(st.session_state["email_answer"].strip() + "\t" + time.strftime("%Y-%m-%d %H:%M:%S") + "\n")
+    post_to_google_sheets(st.session_state["email_answer"], "email")
 
 # ========== 단계별 로직 ==========
 
@@ -93,7 +109,6 @@ def passage_write_step():
         time_left = 0
     st.write(f"Time left: **{time_left}** seconds")
     
-    # 입력창은 제한 시간이 남아있으면 활성, 만료되면 비활성화
     disabled_flag = (time_left <= 0)
     st.text_area("Write the passage from memory:", key="passage_answer", height=150, disabled=disabled_flag)
     
