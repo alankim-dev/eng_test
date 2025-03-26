@@ -32,7 +32,6 @@ def initialize_session_state():
         st.session_state.start_time = None
     if "submitted" not in st.session_state:
         st.session_state.submitted = False
-    # 입력값은 위젯 key에 의해 자동 저장됨.
     if "passage_answer" not in st.session_state:
         st.session_state.passage_answer = ""
     if "email_answer" not in st.session_state:
@@ -82,84 +81,58 @@ def intro_step():
         move_to_step("passage_read")
 
 def passage_read_step():
-    # 1초마다 새로고침 (서버 측 타이머)
-    st_autorefresh(interval=1000, limit=0)
+    st_autorefresh(interval=1000, limit=30)
     st.subheader("📄 Passage Reconstruction (Reading)")
     st.markdown("You have **30 seconds** to read the passage. Then it will disappear.")
     st.info(st.session_state.selected_passage)
-    
+
     time_left = get_time_left(30)
     if time_left < 0:
         time_left = 0
     st.write(f"Time left: **{time_left}** seconds")
-    
-    # 30초 경과 시 자동으로 다음 단계로 전환
+
     if time_left <= 0 and not st.session_state.submitted:
         st.session_state.submitted = True
         move_to_step("passage_write")
 
 def passage_write_step():
+    st_autorefresh(interval=1000, limit=120) # 2분 동안 새로고침
     st.subheader("✍️ Reconstruct the Passage (2 minutes)")
     st.markdown("Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**")
-    
-    total_time = 120  # 2분 = 120초
-    # 한 번만 실행되는 자바스크립트 타이머: st_autorefresh 없이 사용
-    st.markdown(f"<div id='countdown_passage'>Time left: {total_time} seconds</div>", unsafe_allow_html=True)
-    js_code = f"""
-    <script>
-    var timeLeft = {total_time};
-    var countdownElem = document.getElementById('countdown_passage');
-    var interval = setInterval(function(){{
-         timeLeft--;
-         countdownElem.innerHTML = "Time left: " + timeLeft + " seconds";
-         if(timeLeft <= 0){{
-             clearInterval(interval);
-             document.getElementById('hidden_submit_passage').click();
-         }}
-    }}, 1000);
-    </script>
-    """
-    st.markdown(js_code, unsafe_allow_html=True)
-    
+
+    time_left = get_time_left(120)
+    if time_left < 0:
+        time_left = 0
+    st.write(f"Time left: **{time_left}** seconds")
+
     st.text_area("Write the passage from memory:", key="passage_answer", height=150)
-    
-    # 숨겨진 제출 버튼
-    st.markdown("<style>#hidden_submit_passage {display: none;}</style>", unsafe_allow_html=True)
-    
-    if st.button("Submit Answer", key="hidden_submit_passage"):
+
+    if time_left <= 0 and not st.session_state.submitted:
+        st.info("Time is up! Please submit your answer.")
+
+    if st.button("Submit Answer") and not st.session_state.submitted:
         save_passage_answer()
         st.session_state.submitted = True
         st.success("✅ Passage answer has been submitted.")
         move_to_step("email_write")
 
 def email_write_step():
+    st_autorefresh(interval=1000, limit=120) # 2분 동안 새로고침
     st.subheader("📧 Email Writing (2 minutes)")
     st.markdown("Below is a situation. Based on it, write a professional and polite email that requests a one-week extension.")
     st.info(st.session_state.selected_email)
-    
-    total_time = 120  # 2분 = 120초
-    st.markdown(f"<div id='countdown_email'>Time left: {total_time} seconds</div>", unsafe_allow_html=True)
-    js_code_email = f"""
-    <script>
-    var timeLeftEmail = {total_time};
-    var countdownElemEmail = document.getElementById('countdown_email');
-    var intervalEmail = setInterval(function(){{
-         timeLeftEmail--;
-         countdownElemEmail.innerHTML = "Time left: " + timeLeftEmail + " seconds";
-         if(timeLeftEmail <= 0){{
-             clearInterval(intervalEmail);
-             document.getElementById('hidden_submit_email').click();
-         }}
-    }}, 1000);
-    </script>
-    """
-    st.markdown(js_code_email, unsafe_allow_html=True)
-    
+
+    time_left = get_time_left(120)
+    if time_left < 0:
+        time_left = 0
+    st.write(f"Time left: **{time_left}** seconds")
+
     st.text_area("Write your email here:", key="email_answer", height=150)
-    
-    st.markdown("<style>#hidden_submit_email {display: none;}</style>", unsafe_allow_html=True)
-    
-    if st.button("Submit Answer", key="hidden_submit_email"):
+
+    if time_left <= 0 and not st.session_state.submitted:
+        st.info("Time is up! Please submit your answer.")
+
+    if st.button("Submit Answer") and not st.session_state.submitted:
         save_email_answer()
         st.session_state.submitted = True
         st.success("✅ Email answer has been submitted.")
