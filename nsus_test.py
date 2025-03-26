@@ -3,7 +3,6 @@ import time
 import random
 import requests
 import json
-from streamlit_autorefresh import st_autorefresh
 
 # Google Apps Script 웹앱 URL
 GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbxHUtX406TMnBYKAk2MYwKsWpSn02FPC5hNfXWV6fx6eRO7vH5rn3rgXBlJ4-Ld3d95/exec"
@@ -14,8 +13,6 @@ passages = [
     "We have recently updated our internal communication guidelines to ensure that everyone stays informed and aligned. Managers are responsible for sharing weekly updates with their teams. Please check your email every Monday morning for the latest announcements and summaries.",
     "To improve cross-functional collaboration, we will be launching a new project management tool starting next week. Training sessions will be provided on Wednesday and Thursday. Attendance is mandatory for all team members who manage or participate in projects.",
     "The finance team is conducting the quarterly budget review, and all departments must submit their expense reports by Friday afternoon.",
-    "Customer feedback has shown a strong interest in faster response times. To address this, we are adjusting our support team shifts starting Monday. Please submit your suggestions by Friday afternoon.",
-    "Customer feedback has shown a strong interest in faster response times. To address this, we are adjusting our support team shifts starting Monday. Please submit your suggestions by Friday afternoon.",
     "Customer feedback has shown a strong interest in faster response times. To address this, we are adjusting our support team shifts starting Monday. Please review the updated schedule and confirm your availability with your manager by Friday."
 ]
 email_tasks = [
@@ -51,7 +48,6 @@ def get_time_left(total_seconds):
     return int(total_seconds - elapsed)
 
 def move_to_step(next_step):
-    st.info(f"move_to_step() called with next_step: {next_step}")  # 디버깅
     st.session_state.step = next_step
     st.session_state.start_time = time.time()
     st.session_state.submitted = False
@@ -70,10 +66,10 @@ def post_to_google_sheets(response_text, response_type):
         return None
 
 def save_passage_answer():
-    post_to_google_sheets(st.session_state.get("passage_answer", ""), "passage")
+    post_to_google_sheets(st.session_state["passage_answer"], "passage")
 
 def save_email_answer():
-    post_to_google_sheets(st.session_state.get("email_answer", ""), "email")
+    post_to_google_sheets(st.session_state["email_answer"], "email")
 
 # ========== 단계별 로직 ==========
 
@@ -130,7 +126,7 @@ def passage_write_step():
     st.text_area("Write the passage from memory:", key="passage_answer", height=150)
 
     # Streamlit 콜백 처리
-    if st.experimental_get_query_params().get("timeup-passage"):
+    if st.query_params.get("timeup-passage"): # 수정
         st.session_state.submitted = True
         save_passage_answer()
         move_to_step("email_write")
@@ -171,7 +167,7 @@ def email_write_step():
     st.text_area("Write your email here:", key="email_answer", height=150)
 
     # Streamlit 콜백 처리
-    if st.experimental_get_query_params().get("timeup-email"):
+    if st.query_params.get("timeup-email"): # 수정
         st.session_state.submitted = True
         save_email_answer()
         move_to_step("done")
@@ -186,7 +182,6 @@ def done_step():
     st.success("🎉 All tasks are complete! Well done!")
 
 # ========== 단계별 실행 ==========
-st.info(f"Current step: {st.session_state.step}")
 if st.session_state.step == "intro":
     intro_step()
 elif st.session_state.step == "passage_read":
