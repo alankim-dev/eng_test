@@ -52,7 +52,6 @@ def move_to_step(next_step):
     st.session_state.step = next_step
     st.session_state.start_time = time.time()
     st.session_state.submitted = False
-    st.info(f"Moving to step: {st.session_state.step}") # 디버깅 출력
     st.rerun()
 
 def post_to_google_sheets(response_text, response_type):
@@ -79,100 +78,81 @@ def intro_step():
     st.subheader("📝 NSUS English Test")
     st.markdown("This is a two-part writing test including passage reconstruction and email writing.")
     if st.button("Start Test"):
-        st.info("Start Test 버튼 클릭됨") # 디버깅 출력
         move_to_step("passage_read")
-    st.info(f"Current step in intro: {st.session_state.step}, Submitted: {st.session_state.submitted}") # 디버깅 출력
 
 def passage_read_step():
+    # 제출 전일 때만 autorefresh 적용
     if not st.session_state.submitted:
-        st_autorefresh(interval=1000, limit=30)
+        st_autorefresh(interval=1000, limit=0)
     st.subheader("📄 Passage Reconstruction (Reading)")
     st.markdown("You have **30 seconds** to read the passage. Then it will disappear.")
     st.info(st.session_state.selected_passage)
-
+    
     time_left = get_time_left(30)
     if time_left < 0:
         time_left = 0
     st.write(f"Time left: **{time_left}** seconds")
-
+    
     if time_left <= 0 and not st.session_state.submitted:
-        st.info("Passage read time expired") # 디버깅 출력
         st.session_state.submitted = True
-        move_to_step("passage_write")
-    st.info(f"Current step in passage_read: {st.session_state.step}, Submitted: {st.session_state.submitted}, Time Left: {time_left}") # 디버깅 출력
+        st.session_state.autorefresh_enabled = False
+        st.session_state.step = "passage_write"
+        st.rerun()
 
 def passage_write_step():
     if not st.session_state.submitted:
-        st_autorefresh(interval=1000, limit=120)
+        st_autorefresh(interval=1000, limit=0)
     st.subheader("✍️ Reconstruct the Passage (2 minutes)")
     st.markdown("Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**")
-
+    
     time_left = get_time_left(120)
     if time_left < 0:
         time_left = 0
     st.write(f"Time left: **{time_left}** seconds")
-
+    
     disabled_flag = (time_left <= 0)
     st.text_area("Write the passage from memory:", key="passage_answer", height=150, disabled=disabled_flag)
-
+    
     if disabled_flag and not st.session_state.submitted:
-        st.info("Passage write time expired") # 디버깅 출력
-        if st.button("Submit Answer (Time Expired)", key="submit_passage_expired"):
-            save_passage_answer()
-            st.session_state["submitted"] = True
-            st.success("✅ Passage answer has been submitted.")
-            st.session_state["step"] = "email_write"
-            st.session_state["start_time"] = time.time()
-            st.rerun()
-
-    if st.button("Submit Answer", key="submit_passage") and not st.session_state.submitted:
-        st.info("Passage write Submit Answer button clicked") # 디버깅 출력
+        st.info("Time is up! The response area is now disabled. Please click [Submit Answer] to submit your response.")
+    
+    if st.button("Submit Answer") and not st.session_state.submitted:
         save_passage_answer()
-        st.session_state["submitted"] = True
+        st.session_state.submitted = True
         st.success("✅ Passage answer has been submitted.")
-        st.session_state["step"] = "email_write"
-        st.session_state["start_time"] = time.time()
+        st.session_state.autorefresh_enabled = False
+        st.session_state.step = "email_write"
         st.rerun()
-    st.info(f"Current step in passage_write: {st.session_state.step}, Submitted: {st.session_state.submitted}, Time Left: {time_left}") # 디버깅 출력
 
 def email_write_step():
     if not st.session_state.submitted:
-        st_autorefresh(interval=1000, limit=120)
+        st_autorefresh(interval=1000, limit=0)
     st.subheader("📧 Email Writing (2 minutes)")
     st.markdown("Below is a situation. Based on it, write a professional and polite email that requests a one-week extension.")
     st.info(st.session_state.selected_email)
-
+    
     time_left = get_time_left(120)
     if time_left < 0:
         time_left = 0
     st.write(f"Time left: **{time_left}** seconds")
-
+    
     disabled_flag = (time_left <= 0)
     st.text_area("Write your email here:", key="email_answer", height=150, disabled=disabled_flag)
-
+    
     if disabled_flag and not st.session_state.submitted:
-        st.info("Email write time expired") # 디버깅 출력
-        if st.button("Submit Answer (Time Expired)", key="submit_email_expired"):
-            save_email_answer()
-            st.session_state["submitted"] = True
-            st.success("✅ Email answer has been submitted.")
-            st.session_state["step"] = "done"
-            st.session_state["start_time"] = time.time()
-            st.rerun()
-
-    if st.button("Submit Answer", key="submit_email") and not st.session_state.submitted:
-        st.info("Email write Submit Answer button clicked") # 디버깅 출력
+        st.info("Time is up! The email input is disabled. Please click [Submit Answer] to submit your response.")
+    
+    if st.button("Submit Answer") and not st.session_state.submitted:
         save_email_answer()
-        st.session_state["submitted"] = True
+        st.session_state.submitted = True
         st.success("✅ Email answer has been submitted.")
-        st.session_state["step"] = "done"
-        st.session_state["start_time"] = time.time()
+        st.session_state.autorefresh_enabled = False
+        st.session_state.step = "done"
         st.rerun()
-    st.info(f"Current step in email_write: {st.session_state.step}, Submitted: {st.session_state.submitted}, Time Left: {time_left}") # 디버깅 출력
 
 def done_step():
     st.success("🎉 All tasks are complete! Well done!")
-    st.info(f"Current step in done: {st.session_state.step}, Submitted: {st.session_state.submitted}") # 디버깅 출력
+    # 완료 단계에서는 autorefresh 미사용
 
 # ========== 단계별 실행 ==========
 if st.session_state.step == "intro":
