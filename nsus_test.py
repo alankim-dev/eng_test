@@ -119,7 +119,6 @@ def passage_write_step():
         st.session_state.submitted = True
         st.success("✅ Passage answer has been submitted.")
         move_to_step("email_write")
-        st.info(f"st.session_state.step after passage_write: {st.session_state.step}") # 디버깅
 
 def email_write_step():
     st_autorefresh(interval=1000, limit=120)
@@ -145,7 +144,6 @@ def email_write_step():
         st.session_state.submitted = True
         st.success("✅ Email answer has been submitted.")
         move_to_step("done")
-        st.info(f"st.session_state.step after email_write: {st.session_state.step}") # 디버깅
 
 def done_step():
     st.success("🎉 All tasks are complete! Well done!")
