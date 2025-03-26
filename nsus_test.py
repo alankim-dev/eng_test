@@ -3,6 +3,7 @@ import time
 import random
 import requests
 import json
+from streamlit_autorefresh import st_autorefresh
 
 # Google Apps Script 웹앱 URL
 GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbxHUtX406TMnBYKAk2MYwKsWpSn02FPC5hNfXWV6fx6eRO7vH5rn3rgXBlJ4-Ld3d95/exec"
@@ -81,8 +82,7 @@ def intro_step():
         move_to_step("passage_read")
 
 def passage_read_step():
-    # 기존 autorefresh 사용 (여기서는 서버 측 refresh로 충분)
-    from streamlit_autorefresh import st_autorefresh
+    # 1초마다 새로고침 (서버 측 타이머)
     st_autorefresh(interval=1000, limit=0)
     st.subheader("📄 Passage Reconstruction (Reading)")
     st.markdown("You have **30 seconds** to read the passage. Then it will disappear.")
@@ -93,19 +93,18 @@ def passage_read_step():
         time_left = 0
     st.write(f"Time left: **{time_left}** seconds")
     
+    # 30초 경과 시 자동으로 다음 단계로 전환
     if time_left <= 0 and not st.session_state.submitted:
         st.session_state.submitted = True
         move_to_step("passage_write")
 
 def passage_write_step():
-    # 여기서는 자바스크립트를 사용하여 타이머 카운트다운과 자동 제출 버튼 클릭 구현
     st.subheader("✍️ Reconstruct the Passage (2 minutes)")
     st.markdown("Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**")
     
-    total_time = 120  # 2분
-    # 카운트다운을 표시할 div 생성
+    total_time = 120  # 2분 = 120초
+    # 한 번만 실행되는 자바스크립트 타이머: st_autorefresh 없이 사용
     st.markdown(f"<div id='countdown_passage'>Time left: {total_time} seconds</div>", unsafe_allow_html=True)
-    # 자바스크립트로 카운트다운 후, 숨겨진 제출 버튼을 클릭하도록 함
     js_code = f"""
     <script>
     var timeLeft = {total_time};
@@ -124,13 +123,8 @@ def passage_write_step():
     
     st.text_area("Write the passage from memory:", key="passage_answer", height=150)
     
-    # 숨겨진 제출 버튼 (보이지 않도록 스타일 설정)
-    submit_html = """
-    <style>
-    #hidden_submit_passage {display: none;}
-    </style>
-    """
-    st.markdown(submit_html, unsafe_allow_html=True)
+    # 숨겨진 제출 버튼
+    st.markdown("<style>#hidden_submit_passage {display: none;}</style>", unsafe_allow_html=True)
     
     if st.button("Submit Answer", key="hidden_submit_passage"):
         save_passage_answer()
@@ -143,7 +137,7 @@ def email_write_step():
     st.markdown("Below is a situation. Based on it, write a professional and polite email that requests a one-week extension.")
     st.info(st.session_state.selected_email)
     
-    total_time = 120  # 2분
+    total_time = 120  # 2분 = 120초
     st.markdown(f"<div id='countdown_email'>Time left: {total_time} seconds</div>", unsafe_allow_html=True)
     js_code_email = f"""
     <script>
@@ -163,12 +157,7 @@ def email_write_step():
     
     st.text_area("Write your email here:", key="email_answer", height=150)
     
-    submit_html_email = """
-    <style>
-    #hidden_submit_email {display: none;}
-    </style>
-    """
-    st.markdown(submit_html_email, unsafe_allow_html=True)
+    st.markdown("<style>#hidden_submit_email {display: none;}</style>", unsafe_allow_html=True)
     
     if st.button("Submit Answer", key="hidden_submit_email"):
         save_email_answer()
@@ -178,7 +167,6 @@ def email_write_step():
 
 def done_step():
     st.success("🎉 All tasks are complete! Well done!")
-    # 완료 단계에서는 자바스크립트 타이머 없음
 
 # ========== 단계별 실행 ==========
 if st.session_state.step == "intro":
