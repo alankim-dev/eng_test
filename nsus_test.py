@@ -100,7 +100,9 @@ def write_step(title, key_answer, next_step, response_type):
 
     disabled = st.session_state.write_done or time_left <= 0
 
-    st.text_area("Write here:", value=st.session_state.get(key_answer, ""), key=key_answer, height=150, disabled=disabled)
+    input_value = st.text_area("Write here:", value=st.session_state.get(key_answer, ""), key=f"input_{key_answer}", height=150, disabled=disabled)
+    if not disabled:
+        st.session_state[key_answer] = input_value
 
     if time_left <= 0 and not st.session_state.write_done:
         # JS로 자동 클릭
@@ -119,7 +121,9 @@ def write_step(title, key_answer, next_step, response_type):
             st.button("작성 완료", disabled=True)
         with cols[1]:
             if st.button("제출"):
-                post_to_google_sheets(st.session_state.get(key_answer, ""), response_type)
+                # 제출 시에는 최종 저장값 사용
+                final_answer = st.session_state.get(key_answer, "")
+                post_to_google_sheets(final_answer, response_type)
                 move_to_step(next_step)
 
 # 단계: 지문 작성
