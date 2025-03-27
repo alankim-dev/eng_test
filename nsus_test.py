@@ -116,6 +116,8 @@ def write_step(title, key_answer, next_step, response_type, prompt_text, show_in
     if time_left <= 0 and not st.session_state.write_done:
         st.markdown("""
         <script>
+        const textarea = document.querySelector('textarea');
+        if (textarea) textarea.blur();
         const doneBtn = document.getElementById("done_button");
         if (doneBtn) { doneBtn.click(); }
         </script>
