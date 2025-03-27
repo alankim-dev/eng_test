@@ -3,6 +3,7 @@ import time
 import random
 import requests
 import json
+from streamlit_autorefresh import st_autorefresh
 
 # Google Sheets URL
 GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbxHUtX406TMnBYKAk2MYwKsWpSn02FPC5hNfXWV6fx6eRO7vH5rn3rgXBlJ4-Ld3d95/exec"
@@ -73,6 +74,7 @@ def intro_step():
 
 # 단계: 읽기
 def passage_read_step():
+    st_autorefresh(interval=1000, key="read_refresh")
     st.subheader("📄 Passage Reading (30s)")
     st.info(st.session_state.selected_passage)
 
@@ -85,6 +87,9 @@ def passage_read_step():
 
 # 단계: 지문 작성
 def passage_write_step():
+    if not st.session_state.submitted:
+        st_autorefresh(interval=1000, key="passage_refresh")
+
     st.subheader("✍️ Reconstruct the Passage (120s)")
 
     total_time = 120
@@ -99,10 +104,14 @@ def passage_write_step():
 
     if st.button("Submit Answer"):
         post_to_google_sheets(st.session_state.passage_answer, "passage")
+        st.session_state.submitted = True
         move_to_step("email_write")
 
 # 단계: 이메일 작성
 def email_write_step():
+    if not st.session_state.submitted:
+        st_autorefresh(interval=1000, key="email_refresh")
+
     st.subheader("📧 Email Writing (120s)")
 
     total_time = 120
@@ -117,6 +126,7 @@ def email_write_step():
 
     if st.button("Submit Answer"):
         post_to_google_sheets(st.session_state.email_answer, "email")
+        st.session_state.submitted = True
         move_to_step("done")
 
 # 단계: 완료
