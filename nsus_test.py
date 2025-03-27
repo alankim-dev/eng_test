@@ -4,10 +4,10 @@ import random
 import requests
 import json
 
-# Google Sheets 연동 URL
+# Google Sheets
 GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbxHUtX406TMnBYKAk2MYwKsWpSn02FPC5hNfXWV6fx6eRO7vH5rn3rgXBlJ4-Ld3d95/exec"
 
-# 예문 및 과제
+# 예문과 과제
 passages = [
     "Our new product line will be launched next month...",
     "We have recently updated our internal communication guidelines...",
@@ -29,7 +29,8 @@ def init_state():
         "passage_answer": "",
         "email_answer": "",
         "passage_auto_submit": False,
-        "email_auto_submit": False
+        "email_auto_submit": False,
+        "next_step": None,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -52,7 +53,7 @@ def post_to_google_sheets(text, kind):
             "type": kind
         }))
     except Exception as e:
-        st.error(f"Error saving to sheet: {e}")
+        st.error(f"Error saving: {e}")
 
 # 단계: 인트로
 def intro_step():
@@ -76,11 +77,9 @@ def passage_read_step():
 
     if time_left <= 0 and not st.session_state.passage_auto_submit:
         st.session_state.passage_auto_submit = True
-        st.session_state.step = "passage_write"
-        st.session_state.start_time = time.time()
-        st.rerun()
+        st.session_state.next_step = "passage_write"
 
-# 단계: Passage 작성
+# 단계: 지문 작성
 def passage_write_step():
     from streamlit_autorefresh import st_autorefresh
     st_autorefresh(interval=1000)
@@ -96,9 +95,7 @@ def passage_write_step():
     if time_left <= 0 and not st.session_state.passage_auto_submit:
         st.session_state.passage_auto_submit = True
         post_to_google_sheets(st.session_state.passage_answer, "passage")
-        st.session_state.step = "email_write"
-        st.session_state.start_time = time.time()
-        st.rerun()
+        st.session_state.next_step = "email_write"
 
     with st.form("passage_form"):
         user_input = st.text_area("Write the passage:", value=st.session_state.passage_answer, height=150, disabled=disabled)
@@ -106,11 +103,9 @@ def passage_write_step():
         if submitted:
             st.session_state.passage_answer = user_input
             post_to_google_sheets(user_input, "passage")
-            st.session_state.step = "email_write"
-            st.session_state.start_time = time.time()
-            st.rerun()
+            st.session_state.next_step = "email_write"
 
-# 단계: Email 작성
+# 단계: 이메일 작성
 def email_write_step():
     from streamlit_autorefresh import st_autorefresh
     st_autorefresh(interval=1000)
@@ -127,9 +122,7 @@ def email_write_step():
     if time_left <= 0 and not st.session_state.email_auto_submit:
         st.session_state.email_auto_submit = True
         post_to_google_sheets(st.session_state.email_answer, "email")
-        st.session_state.step = "done"
-        st.session_state.start_time = time.time()
-        st.rerun()
+        st.session_state.next_step = "done"
 
     with st.form("email_form"):
         user_input = st.text_area("Write your email here:", value=st.session_state.email_answer, height=150, disabled=disabled)
@@ -137,13 +130,18 @@ def email_write_step():
         if submitted:
             st.session_state.email_answer = user_input
             post_to_google_sheets(user_input, "email")
-            st.session_state.step = "done"
-            st.session_state.start_time = time.time()
-            st.rerun()
+            st.session_state.next_step = "done"
 
 # 단계: 완료
 def done_step():
     st.success("🎉 All tasks complete! Thank you.")
+
+# ✅ form 밖에서 단계 이동 처리
+if st.session_state.next_step:
+    st.session_state.step = st.session_state.next_step
+    st.session_state.start_time = time.time()
+    st.session_state.next_step = None
+    st.rerun()
 
 # 단계 실행
 step = st.session_state.step
