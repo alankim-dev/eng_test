@@ -4,10 +4,10 @@ import random
 import requests
 import json
 
-# Google Sheets URL
+# Google Sheets 연동 URL
 GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbxHUtX406TMnBYKAk2MYwKsWpSn02FPC5hNfXWV6fx6eRO7vH5rn3rgXBlJ4-Ld3d95/exec"
 
-# 예문
+# 예문 및 과제
 passages = [
     "Our new product line will be launched next month...",
     "We have recently updated our internal communication guidelines...",
@@ -54,7 +54,7 @@ def post_to_google_sheets(text, kind):
     except Exception as e:
         st.error(f"Error saving to sheet: {e}")
 
-# 단계: Intro
+# 단계: 인트로
 def intro_step():
     st.subheader("📝 NSUS English Test")
     st.markdown("This is a two-part writing test including passage reconstruction and email writing.")
@@ -92,6 +92,7 @@ def passage_write_step():
     if disabled:
         st.warning("⏰ Time is up. Please submit manually.")
 
+    # 자동 제출
     if time_left <= 0 and not st.session_state.passage_auto_submit:
         st.session_state.passage_auto_submit = True
         post_to_google_sheets(st.session_state.passage_answer, "passage")
@@ -100,10 +101,11 @@ def passage_write_step():
         st.rerun()
 
     with st.form("passage_form"):
-        st.text_area("Write the passage:", key="passage_answer", height=150, disabled=disabled)
+        user_input = st.text_area("Write the passage:", value=st.session_state.passage_answer, height=150, disabled=disabled)
         submitted = st.form_submit_button("Submit Answer")
         if submitted:
-            post_to_google_sheets(st.session_state.passage_answer, "passage")
+            st.session_state.passage_answer = user_input
+            post_to_google_sheets(user_input, "passage")
             st.session_state.step = "email_write"
             st.session_state.start_time = time.time()
             st.rerun()
@@ -130,10 +132,11 @@ def email_write_step():
         st.rerun()
 
     with st.form("email_form"):
-        st.text_area("Write your email here:", key="email_answer", height=150, disabled=disabled)
+        user_input = st.text_area("Write your email here:", value=st.session_state.email_answer, height=150, disabled=disabled)
         submitted = st.form_submit_button("Submit Answer")
         if submitted:
-            post_to_google_sheets(st.session_state.email_answer, "email")
+            st.session_state.email_answer = user_input
+            post_to_google_sheets(user_input, "email")
             st.session_state.step = "done"
             st.session_state.start_time = time.time()
             st.rerun()
