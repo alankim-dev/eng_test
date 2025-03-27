@@ -62,11 +62,11 @@ def post_to_google_sheets(response_text, response_type):
         st.error(f"Error saving {response_type} answer: {e}")
         return None
 
-def save_passage_answer():
-    post_to_google_sheets(st.session_state["passage_answer"], "passage")
+def save_passage_answer_manual(text):
+    post_to_google_sheets(text, "passage")
 
-def save_email_answer():
-    post_to_google_sheets(st.session_state["email_answer"], "email")
+def save_email_answer_manual(text):
+    post_to_google_sheets(text, "email")
 
 # ========== 단계별 화면 ==========
 def intro_step():
@@ -109,10 +109,11 @@ def passage_write_step():
     st.text_area("Write the passage from memory:", key="passage_answer", height=150, disabled=disabled)
 
     if disabled:
-        st.warning("⏰ 시간이 종료되었습니다. 답안을 수정할 수 없습니다. [Submit Answer] 버튼을 눌러주세요.")
+        st.warning("⏰ 시간이 종료되었습니다. [Submit Answer] 버튼을 눌러주세요.")
 
     if st.button("Submit Answer"):
-        save_passage_answer()
+        answer = st.session_state.get("passage_answer", "").strip()
+        save_passage_answer_manual(answer)
         move_to_step("email_write")
 
 def email_write_step():
@@ -134,10 +135,11 @@ def email_write_step():
     st.text_area("Write your email here:", key="email_answer", height=150, disabled=disabled)
 
     if disabled:
-        st.warning("⏰ 시간이 종료되었습니다. 답안을 수정할 수 없습니다. [Submit Answer] 버튼을 눌러주세요.")
+        st.warning("⏰ 시간이 종료되었습니다. [Submit Answer] 버튼을 눌러주세요.")
 
     if st.button("Submit Answer"):
-        save_email_answer()
+        answer = st.session_state.get("email_answer", "").strip()
+        save_email_answer_manual(answer)
         move_to_step("done")
 
 def done_step():
