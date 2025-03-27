@@ -7,7 +7,7 @@ import json
 # Google Sheets URL
 GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbxHUtX406TMnBYKAk2MYwKsWpSn02FPC5hNfXWV6fx6eRO7vH5rn3rgXBlJ4-Ld3d95/exec"
 
-# 지문 및 과제
+# 예문
 passages = [
     "Our new product line will be launched next month...",
     "We have recently updated our internal communication guidelines...",
@@ -38,13 +38,13 @@ def init_state():
 init_state()
 st.title("NSUS English Test")
 
-# 시간 계산
+# 타이머 계산
 def get_time_left(limit):
     if st.session_state.start_time is None:
         return limit
     return max(0, int(limit - (time.time() - st.session_state.start_time)))
 
-# 제출 함수
+# 시트 저장
 def post_to_google_sheets(text, kind):
     try:
         requests.post(GOOGLE_SHEETS_URL, data=json.dumps({
@@ -61,7 +61,7 @@ def intro_step():
     if st.button("Start Test"):
         st.session_state.step = "passage_read"
         st.session_state.start_time = time.time()
-        st.experimental_rerun()
+        st.rerun()
 
 # 단계: Reading
 def passage_read_step():
@@ -78,7 +78,7 @@ def passage_read_step():
         st.session_state.passage_auto_submit = True
         st.session_state.step = "passage_write"
         st.session_state.start_time = time.time()
-        st.experimental_rerun()
+        st.rerun()
 
 # 단계: Passage 작성
 def passage_write_step():
@@ -92,13 +92,12 @@ def passage_write_step():
     if disabled:
         st.warning("⏰ Time is up. Please submit manually.")
 
-    # 자동 제출
     if time_left <= 0 and not st.session_state.passage_auto_submit:
         st.session_state.passage_auto_submit = True
         post_to_google_sheets(st.session_state.passage_answer, "passage")
         st.session_state.step = "email_write"
         st.session_state.start_time = time.time()
-        st.experimental_rerun()
+        st.rerun()
 
     with st.form("passage_form"):
         st.text_area("Write the passage:", key="passage_answer", height=150, disabled=disabled)
@@ -107,7 +106,7 @@ def passage_write_step():
             post_to_google_sheets(st.session_state.passage_answer, "passage")
             st.session_state.step = "email_write"
             st.session_state.start_time = time.time()
-            st.experimental_rerun()
+            st.rerun()
 
 # 단계: Email 작성
 def email_write_step():
@@ -128,7 +127,7 @@ def email_write_step():
         post_to_google_sheets(st.session_state.email_answer, "email")
         st.session_state.step = "done"
         st.session_state.start_time = time.time()
-        st.experimental_rerun()
+        st.rerun()
 
     with st.form("email_form"):
         st.text_area("Write your email here:", key="email_answer", height=150, disabled=disabled)
@@ -137,7 +136,7 @@ def email_write_step():
             post_to_google_sheets(st.session_state.email_answer, "email")
             st.session_state.step = "done"
             st.session_state.start_time = time.time()
-            st.experimental_rerun()
+            st.rerun()
 
 # 단계: 완료
 def done_step():
