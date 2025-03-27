@@ -3,7 +3,6 @@ import time
 import random
 import requests
 import json
-from streamlit_autorefresh import st_autorefresh
 
 # Google Sheets URL
 GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbxHUtX406TMnBYKAk2MYwKsWpSn02FPC5hNfXWV6fx6eRO7vH5rn3rgXBlJ4-Ld3d95/exec"
@@ -74,7 +73,6 @@ def intro_step():
 
 # 단계: 읽기
 def passage_read_step():
-    st_autorefresh(interval=1000, key="read_refresh")
     st.subheader("📄 Passage Reading (30s)")
     st.info(st.session_state.selected_passage)
 
@@ -87,7 +85,6 @@ def passage_read_step():
 
 # 단계: 지문 작성
 def passage_write_step():
-    st_autorefresh(interval=1000, key="write_refresh")
     st.subheader("✍️ Reconstruct the Passage (120s)")
 
     total_time = 120
@@ -100,32 +97,12 @@ def passage_write_step():
 
     st.text_area("Write the passage:", key="passage_answer", height=150, disabled=disabled)
 
-    # 숨겨진 제출 버튼과 스타일
-    st.markdown("""
-    <style>#hidden_submit_passage {display: none;}</style>
-    """, unsafe_allow_html=True)
-
-    # JS 타이머로 자동 클릭 유도
-    st.markdown(f"""
-    <script>
-    var timeLeft = {total_time};
-    var interval = setInterval(function() {{
-         timeLeft--;
-         if (timeLeft <= 0) {{
-             clearInterval(interval);
-             document.getElementById('hidden_submit_passage').click();
-         }}
-    }}, 1000);
-    </script>
-    """, unsafe_allow_html=True)
-
-    if st.button("Submit Answer", key="hidden_submit_passage"):
+    if st.button("Submit Answer"):
         post_to_google_sheets(st.session_state.passage_answer, "passage")
         move_to_step("email_write")
 
 # 단계: 이메일 작성
 def email_write_step():
-    st_autorefresh(interval=1000, key="email_refresh")
     st.subheader("📧 Email Writing (120s)")
 
     total_time = 120
@@ -138,24 +115,7 @@ def email_write_step():
 
     st.text_area("Write your email:", key="email_answer", height=150, disabled=disabled)
 
-    st.markdown("""
-    <style>#hidden_submit_email {display: none;}</style>
-    """, unsafe_allow_html=True)
-
-    st.markdown(f"""
-    <script>
-    var timeLeftEmail = {total_time};
-    var intervalEmail = setInterval(function() {{
-         timeLeftEmail--;
-         if (timeLeftEmail <= 0) {{
-             clearInterval(intervalEmail);
-             document.getElementById('hidden_submit_email').click();
-         }}
-    }}, 1000);
-    </script>
-    """, unsafe_allow_html=True)
-
-    if st.button("Submit Answer", key="hidden_submit_email"):
+    if st.button("Submit Answer"):
         post_to_google_sheets(st.session_state.email_answer, "email")
         move_to_step("done")
 
