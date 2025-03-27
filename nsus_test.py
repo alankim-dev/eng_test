@@ -22,22 +22,19 @@ email_tasks = [
 
 # 상태 초기화
 def initialize_session_state():
-    if "step" not in st.session_state:
-        st.session_state.step = "intro"
-    if "selected_passage" not in st.session_state:
-        st.session_state.selected_passage = random.choice(passages)
-    if "selected_email" not in st.session_state:
-        st.session_state.selected_email = random.choice(email_tasks)
-    if "start_time" not in st.session_state:
-        st.session_state.start_time = None
-    if "submitted" not in st.session_state:
-        st.session_state.submitted = False
-    if "passage_answer" not in st.session_state:
-        st.session_state.passage_answer = ""
-    if "email_answer" not in st.session_state:
-        st.session_state.email_answer = ""
-    if "writing_done" not in st.session_state:
-        st.session_state.writing_done = False
+    defaults = {
+        "step": "intro",
+        "selected_passage": random.choice(passages),
+        "selected_email": random.choice(email_tasks),
+        "start_time": None,
+        "submitted": False,
+        "passage_answer": "",
+        "email_answer": "",
+        "writing_done": False
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
 
 initialize_session_state()
 
@@ -96,13 +93,15 @@ def writing_step(title, key_name, next_step, response_type, prompt_text):
     expired = time_left <= 0
     st.write(f"⏳ Time left: {time_left} seconds")
 
-    # 자동 작성 완료 처리
     if expired and not st.session_state.writing_done:
         st.session_state.writing_done = True
         st.rerun()
 
     disabled = st.session_state.writing_done or expired
-    st.text_area("Write here:", key=key_name, height=150, disabled=disabled)
+
+    # 입력값을 임시로 변수에 저장 (최신 상태 유지)
+    current_text = st.text_area("Write here:", value=st.session_state.get(key_name, ""), height=150, disabled=disabled, key=f"{key_name}_input")
+    st.session_state[key_name] = current_text
 
     col1, col2 = st.columns([1, 1])
     with col1:
