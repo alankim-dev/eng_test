@@ -10,14 +10,14 @@ GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbxHUtX406TMnBYKAk2M
 
 # 지문 및 과제
 passages = [
-    "Our new product line will be launched next month. We are planning a series of promotional events to increase awareness. All team members are expected to contribute ideas for marketing strategies. Please submit your suggestions by Friday afternoon.",
-    "We have recently updated our internal communication guidelines to ensure that everyone stays informed and aligned. Managers are responsible for sharing weekly updates with their teams. Please check your email every Monday morning for the latest announcements and summaries.",
-    "To improve cross-functional collaboration, we will be launching a new project management tool starting next week. Training sessions will be provided on Wednesday and Thursday. Attendance is mandatory for all team members who manage or participate in projects.",
-    "The finance team is conducting the quarterly budget review, and all departments must submit their expense reports by Friday afternoon.",
-    "Customer feedback has shown a strong interest in faster response times. To address this, we are adjusting our support team shifts starting Monday. Please review the updated schedule and confirm your availability with your manager by Friday."
+    "Our new product line will be launched next month...",
+    "We have recently updated our internal communication guidelines...",
+    "To improve cross-functional collaboration, we will be launching...",
+    "The finance team is conducting the quarterly budget review...",
+    "Customer feedback has shown a strong interest in faster response times..."
 ]
 email_tasks = [
-    "One of our team members got sick suddenly, so it’s hard to finish the project on time. We asked another team member for help to complete it as quickly as possible. However, given the situation, we need to ask the manager if we can extend the deadline by one week."
+    "One of our team members got sick suddenly, so it’s hard to finish the project on time..."
 ]
 
 # 상태 초기화
@@ -36,10 +36,10 @@ def initialize_session_state():
         st.session_state.passage_answer = ""
     if "email_answer" not in st.session_state:
         st.session_state.email_answer = ""
-    if "passage_submitted" not in st.session_state:
-        st.session_state.passage_submitted = False
-    if "email_submitted" not in st.session_state:
-        st.session_state.email_submitted = False
+    if "passage_submit_triggered" not in st.session_state:
+        st.session_state.passage_submit_triggered = False
+    if "email_submit_triggered" not in st.session_state:
+        st.session_state.email_submit_triggered = False
 
 initialize_session_state()
 
@@ -100,17 +100,17 @@ def passage_write_step():
 
     st.text_area("Write the passage:", key="passage_answer", height=150, disabled=disabled)
 
+    submit_clicked = st.button("Submit")
+    if submit_clicked:
+        st.session_state.passage_submit_triggered = True
+
     if time_left <= 0 and not st.session_state.submitted:
         st.session_state.submitted = True
-        post_to_google_sheets(st.session_state.passage_answer, "passage")
-        st.session_state.passage_submitted = True
+        st.session_state.passage_submit_triggered = True
 
-    if st.button("Submit"):
+    if st.session_state.passage_submit_triggered:
+        st.session_state.passage_submit_triggered = False
         post_to_google_sheets(st.session_state.passage_answer, "passage")
-        st.session_state.passage_submitted = True
-
-    if st.session_state.passage_submitted:
-        st.session_state.passage_submitted = False
         move_to_step("email_write")
 
 # 단계: 이메일 작성
@@ -124,17 +124,17 @@ def email_write_step():
 
     st.text_area("Write your email:", key="email_answer", height=150, disabled=disabled)
 
+    submit_clicked = st.button("Submit")
+    if submit_clicked:
+        st.session_state.email_submit_triggered = True
+
     if time_left <= 0 and not st.session_state.submitted:
         st.session_state.submitted = True
-        post_to_google_sheets(st.session_state.email_answer, "email")
-        st.session_state.email_submitted = True
+        st.session_state.email_submit_triggered = True
 
-    if st.button("Submit"):
+    if st.session_state.email_submit_triggered:
+        st.session_state.email_submit_triggered = False
         post_to_google_sheets(st.session_state.email_answer, "email")
-        st.session_state.email_submitted = True
-
-    if st.session_state.email_submitted:
-        st.session_state.email_submitted = False
         move_to_step("done")
 
 # 단계: 완료
