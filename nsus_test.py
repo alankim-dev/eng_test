@@ -62,12 +62,6 @@ def post_to_google_sheets(response_text, response_type):
         st.error(f"Error saving {response_type} answer: {e}")
         return None
 
-def save_passage_answer_manual(text):
-    post_to_google_sheets(text, "passage")
-
-def save_email_answer_manual(text):
-    post_to_google_sheets(text, "email")
-
 # ========== 단계별 화면 ==========
 def intro_step():
     st.subheader("📝 NSUS English Test")
@@ -104,17 +98,17 @@ def passage_write_step():
         time_left = 0
 
     st.write(f"⏳ Time left: **{time_left} seconds**")
-
     disabled = time_left <= 0
-    st.text_area("Write the passage from memory:", key="passage_answer", height=150, disabled=disabled)
-
     if disabled:
-        st.warning("⏰ 시간이 종료되었습니다. [Submit Answer] 버튼을 눌러주세요.")
+        st.warning("⏰ 시간이 종료되었습니다. 입력창은 비활성화되며 제출만 가능합니다.")
 
-    if st.button("Submit Answer"):
-        answer = st.session_state.get("passage_answer", "").strip()
-        save_passage_answer_manual(answer)
-        move_to_step("email_write")
+    with st.form("passage_form"):
+        st.text_area("Write the passage from memory:", key="passage_answer", height=150, disabled=disabled)
+        submitted = st.form_submit_button("Submit Answer")
+
+        if submitted:
+            post_to_google_sheets(st.session_state.get("passage_answer", "").strip(), "passage")
+            move_to_step("email_write")
 
 def email_write_step():
     from streamlit_autorefresh import st_autorefresh
@@ -130,17 +124,17 @@ def email_write_step():
         time_left = 0
 
     st.write(f"⏳ Time left: **{time_left} seconds**")
-
     disabled = time_left <= 0
-    st.text_area("Write your email here:", key="email_answer", height=150, disabled=disabled)
-
     if disabled:
-        st.warning("⏰ 시간이 종료되었습니다. [Submit Answer] 버튼을 눌러주세요.")
+        st.warning("⏰ 시간이 종료되었습니다. 입력창은 비활성화되며 제출만 가능합니다.")
 
-    if st.button("Submit Answer"):
-        answer = st.session_state.get("email_answer", "").strip()
-        save_email_answer_manual(answer)
-        move_to_step("done")
+    with st.form("email_form"):
+        st.text_area("Write your email here:", key="email_answer", height=150, disabled=disabled)
+        submitted = st.form_submit_button("Submit Answer")
+
+        if submitted:
+            post_to_google_sheets(st.session_state.get("email_answer", "").strip(), "email")
+            move_to_step("done")
 
 def done_step():
     st.success("🎉 All tasks are complete! Well done!")
