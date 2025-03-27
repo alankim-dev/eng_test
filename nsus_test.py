@@ -4,10 +4,9 @@ import random
 import requests
 import json
 
-# Google Sheets 연동
 GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbxHUtX406TMnBYKAk2MYwKsWpSn02FPC5hNfXWV6fx6eRO7vH5rn3rgXBlJ4-Ld3d95/exec"
 
-# 예문 및 과제
+# 지문과 이메일 과제
 passages = [
     "Our new product line will be launched next month...",
     "We have recently updated our internal communication guidelines...",
@@ -19,48 +18,38 @@ email_tasks = [
     "One of our team members got sick suddenly, so it’s hard to finish the project on time..."
 ]
 
-# 초기 상태 설정
+# 상태 초기화
 def initialize_state():
-    if "step" not in st.session_state:
-        st.session_state.step = "intro"
-    if "selected_passage" not in st.session_state:
-        st.session_state.selected_passage = random.choice(passages)
-    if "selected_email" not in st.session_state:
-        st.session_state.selected_email = random.choice(email_tasks)
-    if "start_time" not in st.session_state:
-        st.session_state.start_time = None
-    if "passage_answer" not in st.session_state:
-        st.session_state.passage_answer = ""
-    if "email_answer" not in st.session_state:
-        st.session_state.email_answer = ""
+    defaults = {
+        "step": "intro",
+        "selected_passage": random.choice(passages),
+        "selected_email": random.choice(email_tasks),
+        "start_time": None,
+        "passage_answer": "",
+        "email_answer": "",
+        "next_step": None
+    }
+    for k, v in defaults.items():
+        if k not in st.session_state:
+            st.session_state[k] = v
 
 initialize_state()
+
 st.title("NSUS English Test")
 
-# 유틸 함수
-def get_time_left(total_sec):
+def get_time_left(limit_sec):
     if st.session_state.start_time is None:
-        return total_sec
-    return int(total_sec - (time.time() - st.session_state.start_time))
-
-def move_to_step(next_step):
-    st.session_state.step = next_step
-    st.session_state.start_time = time.time()
-    st.rerun()
+        return limit_sec
+    return int(limit_sec - (time.time() - st.session_state.start_time))
 
 def post_to_google_sheets(text, kind):
-    payload = {"response": text.strip(), "type": kind}
     try:
-        requests.post(GOOGLE_SHEETS_URL, data=json.dumps(payload))
+        requests.post(
+            GOOGLE_SHEETS_URL,
+            data=json.dumps({"response": text.strip(), "type": kind})
+        )
     except Exception as e:
         st.error(f"Error saving response: {e}")
-
-# 단계별 화면
-def intro_step():
-    st.subheader("📝 NSUS English Test")
-    st.markdown("This is a two-part writing test including passage reconstruction and email writing.")
-    if st.button("Start Test"):
-        move_to_step("passage_read")
 
 def passage_read_step():
     from streamlit_autorefresh import st_autorefresh
@@ -70,9 +59,11 @@ def passage_read_step():
     st.info(st.session_state.selected_passage)
 
     time_left = get_time_left(30)
-    st.write(f"⏳ Time left: **{max(time_left, 0)} seconds**")
+    st.write(f"⏳ Time left: {max(time_left, 0)} seconds")
     if time_left <= 0:
-        move_to_step("passage_write")
+        st.session_state.step = "passage_write"
+        st.session_state.start_time = time.time()
+        st.rerun()
 
 def passage_write_step():
     from streamlit_autorefresh import st_autorefresh
@@ -81,18 +72,17 @@ def passage_write_step():
     st.subheader("✍️ Reconstruct the Passage")
     time_left = get_time_left(120)
     disabled = time_left <= 0
-
-    st.write(f"⏳ Time left: **{max(time_left, 0)} seconds**")
+    st.write(f"⏳ Time left: {max(time_left, 0)} seconds")
     if disabled:
-        st.warning("Time is up. You can no longer edit your answer. Please click Submit.")
+        st.warning("⏰ Time is up. Please submit to continue.")
 
     with st.form("passage_form"):
-        st.text_area("Write the passage from memory:", key="passage_answer", height=150, disabled=disabled)
+        st.text_area("Write the passage from memory:", key="passage_answer", disabled=disabled, height=150)
         submitted = st.form_submit_button("Submit Answer")
 
         if submitted:
             post_to_google_sheets(st.session_state.passage_answer, "passage")
-            move_to_step("email_write")
+            st.session_state.next_step = "email_write"
 
 def email_write_step():
     from streamlit_autorefresh import st_autorefresh
@@ -103,31 +93,44 @@ def email_write_step():
 
     time_left = get_time_left(120)
     disabled = time_left <= 0
-
-    st.write(f"⏳ Time left: **{max(time_left, 0)} seconds**")
+    st.write(f"⏳ Time left: {max(time_left, 0)} seconds")
     if disabled:
-        st.warning("Time is up. You can no longer edit your answer. Please click Submit.")
+        st.warning("⏰ Time is up. Please submit to finish.")
 
     with st.form("email_form"):
-        st.text_area("Write your email here:", key="email_answer", height=150, disabled=disabled)
+        st.text_area("Write your email here:", key="email_answer", disabled=disabled, height=150)
         submitted = st.form_submit_button("Submit Answer")
 
         if submitted:
             post_to_google_sheets(st.session_state.email_answer, "email")
-            move_to_step("done")
+            st.session_state.next_step = "done"
+
+def intro_step():
+    st.subheader("📝 NSUS English Test")
+    st.markdown("This is a two-part writing test including passage reconstruction and email writing.")
+    if st.button("Start Test"):
+        st.session_state.step = "passage_read"
+        st.session_state.start_time = time.time()
+        st.rerun()
 
 def done_step():
     st.success("🎉 All tasks are complete! Thank you!")
 
-# 실행
-step = st.session_state.step
-if step == "intro":
+# 📌 form 바깥에서 화면 전환 처리 (핵심 포인트)
+if st.session_state.get("next_step"):
+    st.session_state.step = st.session_state.next_step
+    st.session_state.start_time = time.time()
+    st.session_state.next_step = None
+    st.rerun()
+
+# 단계 실행
+if st.session_state.step == "intro":
     intro_step()
-elif step == "passage_read":
+elif st.session_state.step == "passage_read":
     passage_read_step()
-elif step == "passage_write":
+elif st.session_state.step == "passage_write":
     passage_write_step()
-elif step == "email_write":
+elif st.session_state.step == "email_write":
     email_write_step()
-elif step == "done":
+elif st.session_state.step == "done":
     done_step()
