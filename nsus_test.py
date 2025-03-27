@@ -36,8 +36,6 @@ def initialize_session_state():
         st.session_state.passage_answer = ""
     if "email_answer" not in st.session_state:
         st.session_state.email_answer = ""
-    if "next_step" not in st.session_state:
-        st.session_state.next_step = None
 
 initialize_session_state()
 
@@ -48,7 +46,6 @@ def move_to_step(next_step):
     st.session_state.step = next_step
     st.session_state.start_time = time.time()
     st.session_state.submitted = False
-    st.session_state.next_step = None
     st.rerun()
 
 # 시간 계산
@@ -90,9 +87,7 @@ def passage_read_step():
 
 # 단계: 지문 작성
 def passage_write_step():
-    if st.session_state.next_step != "email_write":
-        st_autorefresh(interval=1000, key="write_refresh")
-
+    st_autorefresh(interval=1000, key="write_refresh")
     st.subheader("✍️ Reconstruct the Passage (120s)")
 
     total_time = 120
@@ -105,19 +100,32 @@ def passage_write_step():
 
     st.text_area("Write the passage:", key="passage_answer", height=150, disabled=disabled)
 
-    if st.button("Submit Answer"):
-        post_to_google_sheets(st.session_state.passage_answer, "passage")
-        st.session_state.next_step = "email_write"
-        st.rerun()
+    # 숨겨진 제출 버튼과 스타일
+    st.markdown("""
+    <style>#hidden_submit_passage {display: none;}</style>
+    """, unsafe_allow_html=True)
 
-    if st.session_state.next_step == "email_write":
+    # JS 타이머로 자동 클릭 유도
+    st.markdown(f"""
+    <script>
+    var timeLeft = {total_time};
+    var interval = setInterval(function() {{
+         timeLeft--;
+         if (timeLeft <= 0) {{
+             clearInterval(interval);
+             document.getElementById('hidden_submit_passage').click();
+         }}
+    }}, 1000);
+    </script>
+    """, unsafe_allow_html=True)
+
+    if st.button("Submit Answer", key="hidden_submit_passage"):
+        post_to_google_sheets(st.session_state.passage_answer, "passage")
         move_to_step("email_write")
 
 # 단계: 이메일 작성
 def email_write_step():
-    if st.session_state.next_step != "done":
-        st_autorefresh(interval=1000, key="email_refresh")
-
+    st_autorefresh(interval=1000, key="email_refresh")
     st.subheader("📧 Email Writing (120s)")
 
     total_time = 120
@@ -130,12 +138,25 @@ def email_write_step():
 
     st.text_area("Write your email:", key="email_answer", height=150, disabled=disabled)
 
-    if st.button("Submit Answer"):
-        post_to_google_sheets(st.session_state.email_answer, "email")
-        st.session_state.next_step = "done"
-        st.rerun()
+    st.markdown("""
+    <style>#hidden_submit_email {display: none;}</style>
+    """, unsafe_allow_html=True)
 
-    if st.session_state.next_step == "done":
+    st.markdown(f"""
+    <script>
+    var timeLeftEmail = {total_time};
+    var intervalEmail = setInterval(function() {{
+         timeLeftEmail--;
+         if (timeLeftEmail <= 0) {{
+             clearInterval(intervalEmail);
+             document.getElementById('hidden_submit_email').click();
+         }}
+    }}, 1000);
+    </script>
+    """, unsafe_allow_html=True)
+
+    if st.button("Submit Answer", key="hidden_submit_email"):
+        post_to_google_sheets(st.session_state.email_answer, "email")
         move_to_step("done")
 
 # 단계: 완료
