@@ -79,6 +79,7 @@ def intro_step():
 def passage_read_step():
     st_autorefresh(interval=1000, key="read_refresh")
     st.subheader("📄 Passage Reading (30s)")
+    st.markdown("Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**")
     st.info(st.session_state.selected_passage)
 
     time_left = get_time_left(30)
@@ -87,8 +88,8 @@ def passage_read_step():
     if time_left <= 0:
         move_to_step("passage_write")
 
-# 작성 공통 처리 (form 기반)
-def write_step(title, key_answer, next_step, response_type, prompt_text, show_info=None):
+# 작성 공통 처리
+def write_step(title, key_answer, next_step, response_type):
     total_time = 120
     time_left = get_time_left(total_time)
 
@@ -96,66 +97,54 @@ def write_step(title, key_answer, next_step, response_type, prompt_text, show_in
         st_autorefresh(interval=1000, key=f"{response_type}_refresh")
 
     st.subheader(title)
-    st.markdown(prompt_text)
-    if show_info:
-        st.info(show_info)
+    if response_type == "passage":
+        st.markdown("Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**")
+    elif response_type == "email":
+        st.markdown("Below is a situation. Based on it, write a professional and polite email that requests a one-week extension.")
+
+    if response_type == "email":
+        st.info(st.session_state.selected_email)
 
     st.write(f"⏳ Time left: {time_left} seconds")
 
     disabled = st.session_state.write_done or time_left <= 0
 
+    input_key = f"input_{key_answer}"
+    input_value = st.text_area("Write here:", value=st.session_state.get(key_answer, ""), key=input_key, height=150, disabled=disabled)
+    if not disabled:
+        st.session_state[key_answer] = input_value
+
+    def on_write_done():
+        st.session_state[key_answer] = st.session_state.get(input_key, "").strip()
+        st.session_state.write_done = True
+
     if time_left <= 0 and not st.session_state.write_done:
         st.markdown("""
         <script>
-        const textarea = document.querySelector('textarea');
-        if (textarea) textarea.blur();
-        setTimeout(() => {
-            const doneBtn = document.getElementById("done_button");
-            if (doneBtn) doneBtn.click();
-        }, 300);
+        const doneBtn = document.getElementById("done_button");
+        if (doneBtn) { doneBtn.click(); }
         </script>
         """, unsafe_allow_html=True)
 
-    with st.form(key=f"form_{response_type}"):
-        answer = st.text_area("Write here:", value=st.session_state.get(key_answer, ""), height=150, disabled=disabled, key=f"text_{response_type}")
-        if not disabled:
-            st.session_state[key_answer] = answer
-
-        submitted = False
-        if not st.session_state.write_done:
-            submitted = st.form_submit_button("작성 완료", disabled=False, use_container_width=True)
-        else:
-            submitted = st.form_submit_button("제출", use_container_width=True)
-
-    if submitted:
-        st.session_state[key_answer] = answer.strip()
-        if not st.session_state.write_done:
-            st.session_state.write_done = True
-            st.rerun()
-        else:
-            post_to_google_sheets(answer.strip(), response_type)
-            move_to_step(next_step)
+    if not st.session_state.write_done:
+        st.button("작성 완료", key="done_button", on_click=on_write_done)
+    else:
+        cols = st.columns([1, 1])
+        with cols[0]:
+            st.button("작성 완료", disabled=True)
+        with cols[1]:
+            if st.button("제출"):
+                final_answer = st.session_state.get(key_answer, "").strip()
+                post_to_google_sheets(final_answer, response_type)
+                move_to_step(next_step)
 
 # 단계: 지문 작성
 def passage_write_step():
-    write_step(
-        "✍️ Reconstruct the Passage (120s)",
-        "passage_answer",
-        "email_write",
-        "passage",
-        "Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**"
-    )
+    write_step("✍️ Reconstruct the Passage (120s)", "passage_answer", "email_write", "passage")
 
 # 단계: 이메일 작성
 def email_write_step():
-    write_step(
-        "📧 Email Writing (120s)",
-        "email_answer",
-        "done",
-        "email",
-        "Below is a situation. Based on it, write a professional and polite email that requests a one-week extension.",
-        st.session_state.selected_email
-    )
+    write_step("📧 Email Writing (120s)", "email_answer", "done", "email")
 
 # 단계: 완료
 def done_step():
