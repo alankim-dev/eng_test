@@ -85,10 +85,10 @@ def passage_read_step():
     if time_left <= 0:
         move_to_step("passage_write")
 
-# 작성 단계 공통
-
+# 작성 단계 공통 함수
 def writing_step(title, key_name, next_step, response_type, prompt_text):
     st_autorefresh(interval=1000, key=f"{response_type}_refresh")
+
     st.subheader(title)
     st.markdown(prompt_text)
     total_time = 120
@@ -96,46 +96,48 @@ def writing_step(title, key_name, next_step, response_type, prompt_text):
     expired = time_left <= 0
     st.write(f"⏳ Time left: {time_left} seconds")
 
-    if expired:
-        st.warning("⏰ Time is up. Please click the Submit button to continue.")
-        if not st.session_state.writing_done:
-            st.markdown("""
-            <script>
-            const btn = window.parent.document.querySelector('button[data-testid="writing-done"]');
-            if (btn) btn.click();
-            </script>
-            """, unsafe_allow_html=True)
+    # 자동 작성 완료 처리
+    if expired and not st.session_state.writing_done:
+        st.session_state.writing_done = True
+        st.rerun()
 
-    disabled = expired or st.session_state.writing_done
+    disabled = st.session_state.writing_done or expired
     st.text_area("Write here:", key=key_name, height=150, disabled=disabled)
 
-    if not st.session_state.writing_done:
-        if st.button("작성 완료", key="writing-done"):
-            st.session_state.writing_done = True
-            st.rerun()
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        st.button("작성 완료", disabled=st.session_state.writing_done, key="writing_done_btn", on_click=lambda: st.session_state.update({"writing_done": True}))
+    with col2:
+        if st.session_state.writing_done:
+            if st.button("제출", key="submit_btn"):
+                answer = st.session_state.get(key_name, "").strip()
+                post_to_google_sheets(answer, response_type)
+                move_to_step(next_step)
 
-    if st.session_state.writing_done:
-        if st.button("제출", key="submit-answer"):
-            answer = st.session_state.get(key_name, "").strip()
-            post_to_google_sheets(answer, response_type)
-            move_to_step(next_step)
-
-# 지문 작성 단계
+# 각 단계 정의
 def passage_write_step():
-    writing_step("✍️ Reconstruct the Passage (120s)", "passage_answer", "email_write", "passage",
-                 "Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**")
+    writing_step(
+        "✍️ Reconstruct the Passage (120s)",
+        "passage_answer",
+        "email_write",
+        "passage",
+        "Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**"
+    )
 
-# 이메일 작성 단계
 def email_write_step():
-    writing_step("📧 Email Writing (120s)", "email_answer", "done", "email",
-                 "Based on the situation below, write a professional and polite email requesting a one-week extension.")
+    writing_step(
+        "📧 Email Writing (120s)",
+        "email_answer",
+        "done",
+        "email",
+        "Based on the situation below, write a professional and polite email requesting a one-week extension."
+    )
     st.info(st.session_state.selected_email)
 
-# 완료 단계
 def done_step():
     st.success("🎉 All tasks are complete! Well done!")
 
-# 단계 실행
+# 실행
 if st.session_state.step == "intro":
     intro_step()
 elif st.session_state.step == "passage_read":
