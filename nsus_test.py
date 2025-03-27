@@ -107,17 +107,16 @@ def passage_write_step():
     st.write(f"⏳ Time left: **{time_left} seconds**")
 
     if time_left <= 0 and not st.session_state.submitted:
-        save_passage_answer()
         st.session_state.submitted = True
+        save_passage_answer()
         move_to_step("email_write")
         return
 
     st.text_area("Write the passage from memory:", key="passage_answer", height=150)
 
-    if st.button("Submit Answer"):
-        save_passage_answer()
+    if st.button("Submit Answer") and not st.session_state.submitted:
         st.session_state.submitted = True
-        st.success("✅ Passage answer has been submitted.")
+        save_passage_answer()
         move_to_step("email_write")
 
 def email_write_step():
@@ -134,17 +133,16 @@ def email_write_step():
     st.write(f"⏳ Time left: **{time_left} seconds**")
 
     if time_left <= 0 and not st.session_state.submitted:
-        save_email_answer()
         st.session_state.submitted = True
+        save_email_answer()
         move_to_step("done")
         return
 
     st.text_area("Write your email here:", key="email_answer", height=150)
 
-    if st.button("Submit Answer"):
-        save_email_answer()
+    if st.button("Submit Answer") and not st.session_state.submitted:
         st.session_state.submitted = True
-        st.success("✅ Email answer has been submitted.")
+        save_email_answer()
         move_to_step("done")
 
 def done_step():
