@@ -4,8 +4,10 @@ import random
 import requests
 import json
 
+# Google Sheets URL
 GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbxHUtX406TMnBYKAk2MYwKsWpSn02FPC5hNfXWV6fx6eRO7vH5rn3rgXBlJ4-Ld3d95/exec"
 
+# 지문 및 과제
 passages = [
     "Our new product line will be launched next month...",
     "We have recently updated our internal communication guidelines...",
@@ -17,6 +19,7 @@ email_tasks = [
     "One of our team members got sick suddenly, so it’s hard to finish the project on time..."
 ]
 
+# 상태 초기화
 def init_state():
     defaults = {
         "step": "intro",
@@ -25,7 +28,6 @@ def init_state():
         "start_time": None,
         "passage_answer": "",
         "email_answer": "",
-        "next_step": None,
         "passage_auto_submit": False,
         "email_auto_submit": False
     }
@@ -36,24 +38,32 @@ def init_state():
 init_state()
 st.title("NSUS English Test")
 
+# 시간 계산
 def get_time_left(limit):
     if st.session_state.start_time is None:
         return limit
     return max(0, int(limit - (time.time() - st.session_state.start_time)))
 
+# 제출 함수
 def post_to_google_sheets(text, kind):
     try:
-        requests.post(GOOGLE_SHEETS_URL, data=json.dumps({"response": text.strip(), "type": kind}))
+        requests.post(GOOGLE_SHEETS_URL, data=json.dumps({
+            "response": text.strip(),
+            "type": kind
+        }))
     except Exception as e:
-        st.error(f"Error saving: {e}")
+        st.error(f"Error saving to sheet: {e}")
 
+# 단계: Intro
 def intro_step():
     st.subheader("📝 NSUS English Test")
     st.markdown("This is a two-part writing test including passage reconstruction and email writing.")
     if st.button("Start Test"):
         st.session_state.step = "passage_read"
         st.session_state.start_time = time.time()
+        st.experimental_rerun()
 
+# 단계: Reading
 def passage_read_step():
     from streamlit_autorefresh import st_autorefresh
     st_autorefresh(interval=1000)
@@ -66,8 +76,11 @@ def passage_read_step():
 
     if time_left <= 0 and not st.session_state.passage_auto_submit:
         st.session_state.passage_auto_submit = True
-        st.session_state.next_step = "passage_write"
+        st.session_state.step = "passage_write"
+        st.session_state.start_time = time.time()
+        st.experimental_rerun()
 
+# 단계: Passage 작성
 def passage_write_step():
     from streamlit_autorefresh import st_autorefresh
     st_autorefresh(interval=1000)
@@ -79,19 +92,24 @@ def passage_write_step():
     if disabled:
         st.warning("⏰ Time is up. Please submit manually.")
 
-    # 자동 전환
+    # 자동 제출
     if time_left <= 0 and not st.session_state.passage_auto_submit:
         st.session_state.passage_auto_submit = True
         post_to_google_sheets(st.session_state.passage_answer, "passage")
-        st.session_state.next_step = "email_write"
+        st.session_state.step = "email_write"
+        st.session_state.start_time = time.time()
+        st.experimental_rerun()
 
     with st.form("passage_form"):
-        st.text_area("Write the passage from memory:", key="passage_answer", disabled=disabled, height=150)
+        st.text_area("Write the passage:", key="passage_answer", height=150, disabled=disabled)
         submitted = st.form_submit_button("Submit Answer")
         if submitted:
             post_to_google_sheets(st.session_state.passage_answer, "passage")
-            st.session_state.next_step = "email_write"
+            st.session_state.step = "email_write"
+            st.session_state.start_time = time.time()
+            st.experimental_rerun()
 
+# 단계: Email 작성
 def email_write_step():
     from streamlit_autorefresh import st_autorefresh
     st_autorefresh(interval=1000)
@@ -105,27 +123,25 @@ def email_write_step():
     if disabled:
         st.warning("⏰ Time is up. Please submit manually.")
 
-    # 자동 전환
     if time_left <= 0 and not st.session_state.email_auto_submit:
         st.session_state.email_auto_submit = True
         post_to_google_sheets(st.session_state.email_answer, "email")
-        st.session_state.next_step = "done"
+        st.session_state.step = "done"
+        st.session_state.start_time = time.time()
+        st.experimental_rerun()
 
     with st.form("email_form"):
-        st.text_area("Write your email here:", key="email_answer", disabled=disabled, height=150)
+        st.text_area("Write your email here:", key="email_answer", height=150, disabled=disabled)
         submitted = st.form_submit_button("Submit Answer")
         if submitted:
             post_to_google_sheets(st.session_state.email_answer, "email")
-            st.session_state.next_step = "done"
+            st.session_state.step = "done"
+            st.session_state.start_time = time.time()
+            st.experimental_rerun()
 
+# 단계: 완료
 def done_step():
     st.success("🎉 All tasks complete! Thank you.")
-
-# ✅ next_step 처리 (form 밖에서만)
-if st.session_state.next_step:
-    st.session_state.step = st.session_state.next_step
-    st.session_state.start_time = time.time()
-    st.session_state.next_step = None
 
 # 단계 실행
 step = st.session_state.step
