@@ -100,9 +100,7 @@ def write_step(title, key_answer, next_step, response_type):
 
     disabled = st.session_state.write_done or time_left <= 0
 
-    # 최신 입력값을 반영하여 session_state 업데이트
-    input_value = st.text_area("Write here:", value=st.session_state.get(key_answer, ""), key=key_answer, height=150, disabled=disabled)
-    st.session_state[key_answer] = input_value  # 항상 최신값 유지
+    st.text_area("Write here:", value=st.session_state.get(key_answer, ""), key=key_answer, height=150, disabled=disabled)
 
     if time_left <= 0 and not st.session_state.write_done:
         # JS로 자동 클릭
