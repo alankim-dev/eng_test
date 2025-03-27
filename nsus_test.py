@@ -70,7 +70,7 @@ def post_to_google_sheets(response_text, response_type):
 
 # 단계: 인트로
 def intro_step():
-    st.subheader("📝 NSUS English Test")
+    st.subheader("\U0001F4DD NSUS English Test")
     st.markdown("This is a two-part writing test including passage reconstruction and email writing.")
     if st.button("Start Test"):
         move_to_step("passage_read")
@@ -78,67 +78,60 @@ def intro_step():
 # 단계: 읽기
 def passage_read_step():
     st_autorefresh(interval=1000, key="read_refresh")
-    st.subheader("📄 Passage Reading (30s)")
+    st.subheader("\U0001F4C4 Passage Reading (30s)")
     st.info(st.session_state.selected_passage)
 
     time_left = get_time_left(30)
-    st.write(f"⏳ Time left: {time_left} seconds")
+    st.write(f"\u23F3 Time left: {time_left} seconds")
 
     if time_left <= 0:
         move_to_step("passage_write")
 
-# 작성 공통 처리
-def write_step(title, key_answer, next_step, response_type):
+# 작성 공통 처리 (form 기반 안정 저장)
+def writing_form_step(title, key_name, next_step, response_type):
     total_time = 120
     time_left = get_time_left(total_time)
 
     if not st.session_state.write_done:
         st_autorefresh(interval=1000, key=f"{response_type}_refresh")
 
-    st.subheader(title)
-    st.write(f"⏳ Time left: {time_left} seconds")
+    st.subheader(f"{title} ({total_time}s)")
+    st.write(f"\u23F3 Time left: {time_left} seconds")
 
     disabled = st.session_state.write_done or time_left <= 0
 
-    input_key = f"input_{key_answer}"
-    input_value = st.text_area("Write here:", value=st.session_state.get(key_answer, ""), key=input_key, height=150, disabled=disabled)
-    st.session_state[key_answer] = st.session_state.get(input_key, "")  # 실시간 반영
-
-    def on_write_done():
-        st.session_state[key_answer] = st.session_state.get(input_key, "").strip()
+    if time_left <= 0 and not st.session_state.write_done:
+        st.warning("Time is up. Please click the Submit button to continue.")
         st.session_state.write_done = True
 
-    if time_left <= 0 and not st.session_state.write_done:
-        st.markdown("""
-        <script>
-        const doneBtn = document.getElementById("done_button");
-        if (doneBtn) { doneBtn.click(); }
-        </script>
-        """, unsafe_allow_html=True)
+    with st.form(f"form_{response_type}"):
+        answer = st.text_area("Write here:",
+                              value=st.session_state.get(key_name, ""),
+                              key=f"input_{key_name}",
+                              height=150,
+                              disabled=disabled)
 
-    if not st.session_state.write_done:
-        st.button("작성 완료", key="done_button", on_click=on_write_done)
-    else:
-        cols = st.columns([1, 1])
-        with cols[0]:
-            st.button("작성 완료", disabled=True)
-        with cols[1]:
-            if st.button("제출"):
-                final_answer = st.session_state.get(input_key, "").strip()  # 최신값 다시 가져오기
-                post_to_google_sheets(final_answer, response_type)
+        submit_form = st.form_submit_button("작성 완료" if not disabled else "제출")
+
+        if submit_form:
+            st.session_state[key_name] = answer.strip()
+            if not st.session_state.write_done:
+                st.session_state.write_done = True
+            else:
+                post_to_google_sheets(st.session_state.get(key_name, ""), response_type)
                 move_to_step(next_step)
 
 # 단계: 지문 작성
 def passage_write_step():
-    write_step("✍️ Reconstruct the Passage (120s)", "passage_answer", "email_write", "passage")
+    writing_form_step("\u270D\ufe0f Reconstruct the Passage", "passage_answer", "email_write", "passage")
 
 # 단계: 이메일 작성
 def email_write_step():
-    write_step("📧 Email Writing (120s)", "email_answer", "done", "email")
+    writing_form_step("\U0001F4E7 Email Writing", "email_answer", "done", "email")
 
 # 단계: 완료
 def done_step():
-    st.success("🎉 All tasks are complete! Well done!")
+    st.success("\U0001F389 All tasks are complete! Well done!")
 
 # 실행
 if st.session_state.step == "intro":
