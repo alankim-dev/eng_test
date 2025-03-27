@@ -8,7 +8,7 @@ from streamlit_autorefresh import st_autorefresh
 # Google Sheets URL
 GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbxHUtX406TMnBYKAk2MYwKsWpSn02FPC5hNfXWV6fx6eRO7vH5rn3rgXBlJ4-Ld3d95/exec"
 
-# 지문 및 과제
+# 문제 데이터
 passages = [
     "Our new product line will be launched next month. We are planning a series of promotional events to increase awareness. All team members are expected to contribute ideas for marketing strategies. Please submit your suggestions by Friday afternoon.",
     "We have recently updated our internal communication guidelines to ensure that everyone stays informed and aligned. Managers are responsible for sharing weekly updates with their teams. Please check your email every Monday morning for the latest announcements and summaries.",
@@ -20,7 +20,7 @@ email_tasks = [
     "One of our team members got sick suddenly, so it’s hard to finish the project on time. We asked another team member for help to complete it as quickly as possible. However, given the situation, we need to ask the manager if we can extend the deadline by one week."
 ]
 
-# 상태 초기화
+# 세션 초기화
 def initialize_session_state():
     if "step" not in st.session_state:
         st.session_state.step = "intro"
@@ -40,10 +40,9 @@ def initialize_session_state():
         st.session_state.email_answer = ""
 
 initialize_session_state()
-
 st.title("NSUS English Test")
 
-# 단계 이동
+# 함수: 단계 이동
 def move_to_step(next_step):
     st.session_state.step = next_step
     st.session_state.start_time = time.time()
@@ -51,43 +50,39 @@ def move_to_step(next_step):
     st.session_state.submitted = False
     st.rerun()
 
-# 시간 계산
+# 함수: 남은 시간 계산
 def get_time_left(limit):
     if st.session_state.start_time is None:
         return limit
     return max(0, int(limit - (time.time() - st.session_state.start_time)))
 
-# 저장 함수
+# 함수: 구글시트 저장
 def post_to_google_sheets(response_text, response_type):
-    data = {
-        "response": response_text.strip(),
-        "type": response_type
-    }
+    data = {"response": response_text.strip(), "type": response_type}
     try:
         requests.post(GOOGLE_SHEETS_URL, data=json.dumps(data))
     except Exception as e:
         st.error(f"Error saving {response_type} answer: {e}")
 
-# 단계: 인트로
+# 인트로
 def intro_step():
-    st.subheader("📝 NSUS English Test")
+    st.subheader("\U0001F4DD NSUS English Test")
     st.markdown("This is a two-part writing test including passage reconstruction and email writing.")
     if st.button("Start Test"):
         move_to_step("passage_read")
 
-# 단계: 읽기
+# 리딩
 def passage_read_step():
     st_autorefresh(interval=1000, key="read_refresh")
-    st.subheader("📄 Passage Reading (30s)")
+    st.subheader("\U0001F4DC Passage Reading (30s)")
+    st.markdown("Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**")
     st.info(st.session_state.selected_passage)
-
     time_left = get_time_left(30)
     st.write(f"⏳ Time left: {time_left} seconds")
-
     if time_left <= 0:
         move_to_step("passage_write")
 
-# 작성 공통 처리
+# 공통 작성단계
 def write_step(title, instruction, source_text, key_answer, next_step, response_type):
     total_time = 120
     time_left = get_time_left(total_time)
@@ -97,13 +92,14 @@ def write_step(title, instruction, source_text, key_answer, next_step, response_
 
     st.subheader(title)
     st.markdown(instruction)
-    st.info(source_text)
+    if response_type == "email":
+        st.info(source_text)
     st.write(f"⏳ Time left: {time_left} seconds")
 
     disabled = st.session_state.write_done or time_left <= 0
-
     input_key = f"input_{key_answer}"
     input_value = st.text_area("Write here:", value=st.session_state.get(key_answer, ""), key=input_key, height=150, disabled=disabled)
+
     if not disabled:
         st.session_state[key_answer] = input_value
 
@@ -114,8 +110,13 @@ def write_step(title, instruction, source_text, key_answer, next_step, response_
     if time_left <= 0 and not st.session_state.write_done:
         st.markdown("""
         <script>
-        const doneBtn = document.getElementById("done_button");
-        if (doneBtn) { doneBtn.click(); }
+        const textarea = document.querySelector('textarea');
+        if (textarea) {
+            textarea.blur();
+            setTimeout(() => {
+                document.getElementById('done_button')?.click();
+            }, 300);
+        }
         </script>
         """, unsafe_allow_html=True)
 
@@ -131,21 +132,21 @@ def write_step(title, instruction, source_text, key_answer, next_step, response_
                 post_to_google_sheets(final_answer, response_type)
                 move_to_step(next_step)
 
-# 단계: 지문 작성
+# 단계별 함수
+
 def passage_write_step():
     write_step(
         "✍️ Reconstruct the Passage (120s)",
-        "Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.",
+        "Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**",
         st.session_state.selected_passage,
         "passage_answer",
         "email_write",
         "passage"
     )
 
-# 단계: 이메일 작성
 def email_write_step():
     write_step(
-        "📧 Email Writing (120s)",
+        "\U0001F4E7 Email Writing (120s)",
         "Below is a situation. Based on it, write a professional and polite email that requests a one-week extension.",
         st.session_state.selected_email,
         "email_answer",
@@ -153,11 +154,10 @@ def email_write_step():
         "email"
     )
 
-# 단계: 완료
 def done_step():
     st.success("🎉 All tasks are complete! Well done!")
 
-# 실행
+# 실행 분기
 if st.session_state.step == "intro":
     intro_step()
 elif st.session_state.step == "passage_read":
