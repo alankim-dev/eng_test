@@ -87,7 +87,7 @@ def passage_read_step():
     if time_left <= 0:
         move_to_step("passage_write")
 
-# 작성 공통 처리
+# 작성 공통 처리 (form 기반)
 def write_step(title, key_answer, next_step, response_type, prompt_text, show_info=None):
     total_time = 120
     time_left = get_time_left(total_time)
@@ -104,36 +104,37 @@ def write_step(title, key_answer, next_step, response_type, prompt_text, show_in
 
     disabled = st.session_state.write_done or time_left <= 0
 
-    input_key = f"input_{key_answer}"
-    input_value = st.text_area("Write here:", value=st.session_state.get(key_answer, ""), key=input_key, height=150, disabled=disabled)
-    if not disabled:
-        st.session_state[key_answer] = input_value
-
-    def on_write_done():
-        st.session_state[key_answer] = st.session_state.get(input_key, "").strip()
-        st.session_state.write_done = True
-
     if time_left <= 0 and not st.session_state.write_done:
         st.markdown("""
         <script>
         const textarea = document.querySelector('textarea');
         if (textarea) textarea.blur();
-        const doneBtn = document.getElementById("done_button");
-        if (doneBtn) { doneBtn.click(); }
+        setTimeout(() => {
+            const doneBtn = document.getElementById("done_button");
+            if (doneBtn) doneBtn.click();
+        }, 300);
         </script>
         """, unsafe_allow_html=True)
 
-    if not st.session_state.write_done:
-        st.button("작성 완료", key="done_button", on_click=on_write_done)
-    else:
-        cols = st.columns([1, 1])
-        with cols[0]:
-            st.button("작성 완료", disabled=True)
-        with cols[1]:
-            if st.button("제출"):
-                final_answer = st.session_state.get(key_answer, "").strip()
-                post_to_google_sheets(final_answer, response_type)
-                move_to_step(next_step)
+    with st.form(key=f"form_{response_type}"):
+        answer = st.text_area("Write here:", value=st.session_state.get(key_answer, ""), height=150, disabled=disabled, key=f"text_{response_type}")
+        if not disabled:
+            st.session_state[key_answer] = answer
+
+        submitted = False
+        if not st.session_state.write_done:
+            submitted = st.form_submit_button("작성 완료", disabled=False, use_container_width=True)
+        else:
+            submitted = st.form_submit_button("제출", use_container_width=True)
+
+    if submitted:
+        st.session_state[key_answer] = answer.strip()
+        if not st.session_state.write_done:
+            st.session_state.write_done = True
+            st.rerun()
+        else:
+            post_to_google_sheets(answer.strip(), response_type)
+            move_to_step(next_step)
 
 # 단계: 지문 작성
 def passage_write_step():
