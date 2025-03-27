@@ -100,12 +100,16 @@ def write_step(title, key_answer, next_step, response_type):
 
     disabled = st.session_state.write_done or time_left <= 0
 
-    input_value = st.text_area("Write here:", value=st.session_state.get(key_answer, ""), key=f"input_{key_answer}", height=150, disabled=disabled)
+    input_key = f"input_{key_answer}"
+    input_value = st.text_area("Write here:", value=st.session_state.get(key_answer, ""), key=input_key, height=150, disabled=disabled)
     if not disabled:
         st.session_state[key_answer] = input_value
 
+    def on_write_done():
+        st.session_state[key_answer] = st.session_state.get(input_key, "")
+        st.session_state.write_done = True
+
     if time_left <= 0 and not st.session_state.write_done:
-        # JS로 자동 클릭
         st.markdown("""
         <script>
         const doneBtn = document.getElementById("done_button");
@@ -114,14 +118,13 @@ def write_step(title, key_answer, next_step, response_type):
         """, unsafe_allow_html=True)
 
     if not st.session_state.write_done:
-        st.button("작성 완료", key="done_button", on_click=lambda: st.session_state.update({"write_done": True}))
+        st.button("작성 완료", key="done_button", on_click=on_write_done)
     else:
         cols = st.columns([1, 1])
         with cols[0]:
             st.button("작성 완료", disabled=True)
         with cols[1]:
             if st.button("제출"):
-                # 제출 시에는 최종 저장값 사용
                 final_answer = st.session_state.get(key_answer, "")
                 post_to_google_sheets(final_answer, response_type)
                 move_to_step(next_step)
