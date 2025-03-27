@@ -106,7 +106,8 @@ def write_step(title, key_answer, next_step, response_type):
         st.session_state[key_answer] = input_value
 
     def on_write_done():
-        st.session_state[key_answer] = st.session_state.get(input_key, "")
+        # 항상 최신 값 강제 저장
+        st.session_state[key_answer] = st.session_state.get(input_key, "").strip()
         st.session_state.write_done = True
 
     if time_left <= 0 and not st.session_state.write_done:
@@ -125,7 +126,7 @@ def write_step(title, key_answer, next_step, response_type):
             st.button("작성 완료", disabled=True)
         with cols[1]:
             if st.button("제출"):
-                final_answer = st.session_state.get(key_answer, "")
+                final_answer = st.session_state.get(key_answer, "").strip()
                 post_to_google_sheets(final_answer, response_type)
                 move_to_step(next_step)
 
