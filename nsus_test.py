@@ -70,26 +70,27 @@ def passage_read_step():
     st.subheader("📄 Passage Reading (30s)")
     st.info(st.session_state.selected_passage)
 
-    # JS 타이머 삽입
     st.markdown("""
     <div id="timer">Time left: 30</div>
+    <button id="auto_next" style="display:none;">Next</button>
     <script>
-    var totalTime = 30;
-    var interval = setInterval(function() {
-        totalTime--;
-        document.getElementById("timer").innerHTML = "Time left: " + totalTime;
-        if (totalTime <= 0) {
-            clearInterval(interval);
-            document.getElementById("auto_next").click();
-        }
-    }, 1000);
+    document.addEventListener("DOMContentLoaded", function() {
+        var totalTime = 30;
+        var countdownElem = document.getElementById("timer");
+        var autoNextBtn = document.getElementById("auto_next");
+
+        var interval = setInterval(function() {
+            totalTime--;
+            countdownElem.innerHTML = "Time left: " + totalTime + " seconds";
+            if (totalTime <= 0) {
+                clearInterval(interval);
+                autoNextBtn.click();
+            }
+        }, 1000);
+    });
     </script>
     """, unsafe_allow_html=True)
 
-    # 자동 넘어가기 위한 숨겨진 버튼
-    st.markdown("""
-    <style>#auto_next {display: none;}</style>
-    """, unsafe_allow_html=True)
     if st.button("Next", key="auto_next"):
         move_to_step("passage_write")
 
@@ -100,21 +101,26 @@ def passage_write_step():
 
     st.markdown("""
     <div id="timer2">Time left: 120</div>
+    <button id="auto_submit_passage" style="display:none;">Submit</button>
     <script>
-    var totalTime2 = 120;
-    var interval2 = setInterval(function() {
-        totalTime2--;
-        document.getElementById("timer2").innerHTML = "Time left: " + totalTime2;
-        if (totalTime2 <= 0) {
-            clearInterval(interval2);
-            document.getElementById("auto_submit_passage").click();
-        }
-    }, 1000);
+    document.addEventListener("DOMContentLoaded", function() {
+        var totalTime2 = 120;
+        var countdownElem2 = document.getElementById("timer2");
+        var autoSubmitBtn2 = document.getElementById("auto_submit_passage");
+
+        var interval2 = setInterval(function() {
+            totalTime2--;
+            countdownElem2.innerHTML = "Time left: " + totalTime2 + " seconds";
+            if (totalTime2 <= 0) {
+                clearInterval(interval2);
+                autoSubmitBtn2.click();
+            }
+        }, 1000);
+    });
     </script>
     """, unsafe_allow_html=True)
 
     st.text_area("Write the passage:", key="passage_answer", height=150, disabled=disabled)
-    st.markdown("<style>#auto_submit_passage {display: none;}</style>", unsafe_allow_html=True)
 
     if st.button("Submit", key="auto_submit_passage"):
         post_to_google_sheets(st.session_state.passage_answer, "passage")
@@ -127,21 +133,26 @@ def email_write_step():
 
     st.markdown("""
     <div id="timer3">Time left: 120</div>
+    <button id="auto_submit_email" style="display:none;">Submit</button>
     <script>
-    var totalTime3 = 120;
-    var interval3 = setInterval(function() {
-        totalTime3--;
-        document.getElementById("timer3").innerHTML = "Time left: " + totalTime3;
-        if (totalTime3 <= 0) {
-            clearInterval(interval3);
-            document.getElementById("auto_submit_email").click();
-        }
-    }, 1000);
+    document.addEventListener("DOMContentLoaded", function() {
+        var totalTime3 = 120;
+        var countdownElem3 = document.getElementById("timer3");
+        var autoSubmitBtn3 = document.getElementById("auto_submit_email");
+
+        var interval3 = setInterval(function() {
+            totalTime3--;
+            countdownElem3.innerHTML = "Time left: " + totalTime3 + " seconds";
+            if (totalTime3 <= 0) {
+                clearInterval(interval3);
+                autoSubmitBtn3.click();
+            }
+        }, 1000);
+    });
     </script>
     """, unsafe_allow_html=True)
 
     st.text_area("Write your email:", key="email_answer", height=150, disabled=disabled)
-    st.markdown("<style>#auto_submit_email {display: none;}</style>", unsafe_allow_html=True)
 
     if st.button("Submit", key="auto_submit_email"):
         post_to_google_sheets(st.session_state.email_answer, "email")
