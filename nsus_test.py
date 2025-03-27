@@ -4,10 +4,10 @@ import random
 import requests
 import json
 
-# Google Apps Script 웹앱 URL
+# Google Sheets 연동
 GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbxHUtX406TMnBYKAk2MYwKsWpSn02FPC5hNfXWV6fx6eRO7vH5rn3rgXBlJ4-Ld3d95/exec"
 
-# ========== 예시 지문 및 이메일 과제 ==========
+# 예문 및 과제
 passages = [
     "Our new product line will be launched next month...",
     "We have recently updated our internal communication guidelines...",
@@ -19,7 +19,7 @@ email_tasks = [
     "One of our team members got sick suddenly, so it’s hard to finish the project on time..."
 ]
 
-# ========== 상태 초기화 ==========
+# 초기 상태 설정
 def initialize_state():
     if "step" not in st.session_state:
         st.session_state.step = "intro"
@@ -35,10 +35,9 @@ def initialize_state():
         st.session_state.email_answer = ""
 
 initialize_state()
-
 st.title("NSUS English Test")
 
-# ========== 유틸 함수 ==========
+# 유틸 함수
 def get_time_left(total_sec):
     if st.session_state.start_time is None:
         return total_sec
@@ -56,7 +55,7 @@ def post_to_google_sheets(text, kind):
     except Exception as e:
         st.error(f"Error saving response: {e}")
 
-# ========== 단계별 화면 ==========
+# 단계별 화면
 def intro_step():
     st.subheader("📝 NSUS English Test")
     st.markdown("This is a two-part writing test including passage reconstruction and email writing.")
@@ -72,7 +71,6 @@ def passage_read_step():
 
     time_left = get_time_left(30)
     st.write(f"⏳ Time left: **{max(time_left, 0)} seconds**")
-
     if time_left <= 0:
         move_to_step("passage_write")
 
@@ -86,14 +84,15 @@ def passage_write_step():
 
     st.write(f"⏳ Time left: **{max(time_left, 0)} seconds**")
     if disabled:
-        st.warning("Time is up. You can no longer edit your answer. Please click [Submit Answer] to continue.")
+        st.warning("Time is up. You can no longer edit your answer. Please click Submit.")
 
-    st.text_area("Write the passage from memory:", key="passage_answer", height=150, disabled=disabled)
+    with st.form("passage_form"):
+        st.text_area("Write the passage from memory:", key="passage_answer", height=150, disabled=disabled)
+        submitted = st.form_submit_button("Submit Answer")
 
-    if st.button("Submit Answer"):
-        answer = st.session_state.get("passage_answer", "").strip()
-        post_to_google_sheets(answer, "passage")
-        move_to_step("email_write")
+        if submitted:
+            post_to_google_sheets(st.session_state.passage_answer, "passage")
+            move_to_step("email_write")
 
 def email_write_step():
     from streamlit_autorefresh import st_autorefresh
@@ -107,19 +106,20 @@ def email_write_step():
 
     st.write(f"⏳ Time left: **{max(time_left, 0)} seconds**")
     if disabled:
-        st.warning("Time is up. You can no longer edit your answer. Please click [Submit Answer] to finish.")
+        st.warning("Time is up. You can no longer edit your answer. Please click Submit.")
 
-    st.text_area("Write your email here:", key="email_answer", height=150, disabled=disabled)
+    with st.form("email_form"):
+        st.text_area("Write your email here:", key="email_answer", height=150, disabled=disabled)
+        submitted = st.form_submit_button("Submit Answer")
 
-    if st.button("Submit Answer"):
-        answer = st.session_state.get("email_answer", "").strip()
-        post_to_google_sheets(answer, "email")
-        move_to_step("done")
+        if submitted:
+            post_to_google_sheets(st.session_state.email_answer, "email")
+            move_to_step("done")
 
 def done_step():
     st.success("🎉 All tasks are complete! Thank you!")
 
-# ========== 실행 ==========
+# 실행
 step = st.session_state.step
 if step == "intro":
     intro_step()
