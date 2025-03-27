@@ -3,6 +3,7 @@ import time
 import random
 import requests
 import json
+from streamlit_autorefresh import st_autorefresh
 
 # Google Sheets URL
 GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbxHUtX406TMnBYKAk2MYwKsWpSn02FPC5hNfXWV6fx6eRO7vH5rn3rgXBlJ4-Ld3d95/exec"
@@ -47,6 +48,12 @@ def move_to_step(next_step):
     st.session_state.submitted = False
     st.rerun()
 
+# 시간 계산
+def get_time_left(limit):
+    if st.session_state.start_time is None:
+        return limit
+    return max(0, int(limit - (time.time() - st.session_state.start_time)))
+
 # 저장 함수
 def post_to_google_sheets(response_text, response_type):
     data = {
@@ -67,95 +74,57 @@ def intro_step():
 
 # 단계: 읽기
 def passage_read_step():
+    st_autorefresh(interval=1000, key="read_refresh")
     st.subheader("📄 Passage Reading (30s)")
     st.info(st.session_state.selected_passage)
 
-    st.markdown("""
-    <div id="timer">Time left: 30</div>
-    <button id="auto_next" style="display:none;">Next</button>
-    <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        var totalTime = 30;
-        var countdownElem = document.getElementById("timer");
-        var autoNextBtn = document.getElementById("auto_next");
+    time_left = get_time_left(30)
+    st.write(f"⏳ Time left: {time_left} seconds")
 
-        var interval = setInterval(function() {
-            totalTime--;
-            countdownElem.innerHTML = "Time left: " + totalTime + " seconds";
-            if (totalTime <= 0) {
-                clearInterval(interval);
-                autoNextBtn.click();
-            }
-        }, 1000);
-    });
-    </script>
-    """, unsafe_allow_html=True)
-
-    if st.button("Next", key="auto_next"):
+    if time_left <= 0 and not st.session_state.submitted:
+        st.session_state.submitted = True
         move_to_step("passage_write")
 
 # 단계: 지문 작성
 def passage_write_step():
+    st_autorefresh(interval=1000, key="write_refresh")
     st.subheader("✍️ Reconstruct the Passage (120s)")
-    disabled = False
 
-    st.markdown("""
-    <div id="timer2">Time left: 120</div>
-    <button id="auto_submit_passage" style="display:none;">Submit</button>
-    <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        var totalTime2 = 120;
-        var countdownElem2 = document.getElementById("timer2");
-        var autoSubmitBtn2 = document.getElementById("auto_submit_passage");
-
-        var interval2 = setInterval(function() {
-            totalTime2--;
-            countdownElem2.innerHTML = "Time left: " + totalTime2 + " seconds";
-            if (totalTime2 <= 0) {
-                clearInterval(interval2);
-                autoSubmitBtn2.click();
-            }
-        }, 1000);
-    });
-    </script>
-    """, unsafe_allow_html=True)
+    time_left = get_time_left(120)
+    disabled = time_left <= 0
+    st.write(f"⏳ Time left: {time_left} seconds")
 
     st.text_area("Write the passage:", key="passage_answer", height=150, disabled=disabled)
 
-    if st.button("Submit", key="auto_submit_passage"):
+    if time_left <= 0 and not st.session_state.submitted:
+        st.session_state.submitted = True
         post_to_google_sheets(st.session_state.passage_answer, "passage")
+        move_to_step("email_write")
+
+    if st.button("Submit"):
+        post_to_google_sheets(st.session_state.passage_answer, "passage")
+        st.session_state.submitted = True
         move_to_step("email_write")
 
 # 단계: 이메일 작성
 def email_write_step():
+    st_autorefresh(interval=1000, key="email_refresh")
     st.subheader("📧 Email Writing (120s)")
-    disabled = False
 
-    st.markdown("""
-    <div id="timer3">Time left: 120</div>
-    <button id="auto_submit_email" style="display:none;">Submit</button>
-    <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        var totalTime3 = 120;
-        var countdownElem3 = document.getElementById("timer3");
-        var autoSubmitBtn3 = document.getElementById("auto_submit_email");
-
-        var interval3 = setInterval(function() {
-            totalTime3--;
-            countdownElem3.innerHTML = "Time left: " + totalTime3 + " seconds";
-            if (totalTime3 <= 0) {
-                clearInterval(interval3);
-                autoSubmitBtn3.click();
-            }
-        }, 1000);
-    });
-    </script>
-    """, unsafe_allow_html=True)
+    time_left = get_time_left(120)
+    disabled = time_left <= 0
+    st.write(f"⏳ Time left: {time_left} seconds")
 
     st.text_area("Write your email:", key="email_answer", height=150, disabled=disabled)
 
-    if st.button("Submit", key="auto_submit_email"):
+    if time_left <= 0 and not st.session_state.submitted:
+        st.session_state.submitted = True
         post_to_google_sheets(st.session_state.email_answer, "email")
+        move_to_step("done")
+
+    if st.button("Submit"):
+        post_to_google_sheets(st.session_state.email_answer, "email")
+        st.session_state.submitted = True
         move_to_step("done")
 
 # 단계: 완료
