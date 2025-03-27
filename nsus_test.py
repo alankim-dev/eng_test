@@ -22,19 +22,22 @@ email_tasks = [
 
 # 상태 초기화
 def initialize_session_state():
-    defaults = {
-        "step": "intro",
-        "selected_passage": random.choice(passages),
-        "selected_email": random.choice(email_tasks),
-        "start_time": None,
-        "submitted": False,
-        "passage_answer": "",
-        "email_answer": "",
-        "writing_done": False
-    }
-    for key, value in defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = value
+    if "step" not in st.session_state:
+        st.session_state.step = "intro"
+    if "selected_passage" not in st.session_state:
+        st.session_state.selected_passage = random.choice(passages)
+    if "selected_email" not in st.session_state:
+        st.session_state.selected_email = random.choice(email_tasks)
+    if "start_time" not in st.session_state:
+        st.session_state.start_time = None
+    if "write_done" not in st.session_state:
+        st.session_state.write_done = False
+    if "submitted" not in st.session_state:
+        st.session_state.submitted = False
+    if "passage_answer" not in st.session_state:
+        st.session_state.passage_answer = ""
+    if "email_answer" not in st.session_state:
+        st.session_state.email_answer = ""
 
 initialize_session_state()
 
@@ -44,8 +47,8 @@ st.title("NSUS English Test")
 def move_to_step(next_step):
     st.session_state.step = next_step
     st.session_state.start_time = time.time()
+    st.session_state.write_done = False
     st.session_state.submitted = False
-    st.session_state.writing_done = False
     st.rerun()
 
 # 시간 계산
@@ -65,74 +68,77 @@ def post_to_google_sheets(response_text, response_type):
     except Exception as e:
         st.error(f"Error saving {response_type} answer: {e}")
 
-# 인트로 단계
+# 단계: 인트로
 def intro_step():
     st.subheader("📝 NSUS English Test")
     st.markdown("This is a two-part writing test including passage reconstruction and email writing.")
     if st.button("Start Test"):
         move_to_step("passage_read")
 
-# 지문 읽기 단계
+# 단계: 읽기
 def passage_read_step():
     st_autorefresh(interval=1000, key="read_refresh")
     st.subheader("📄 Passage Reading (30s)")
     st.info(st.session_state.selected_passage)
+
     time_left = get_time_left(30)
     st.write(f"⏳ Time left: {time_left} seconds")
+
     if time_left <= 0:
         move_to_step("passage_write")
 
-# 작성 단계 공통 함수
-def writing_step(title, key_name, next_step, response_type, prompt_text):
-    st_autorefresh(interval=1000, key=f"{response_type}_refresh")
-
-    st.subheader(title)
-    st.markdown(prompt_text)
+# 작성 공통 처리
+def write_step(title, key_answer, next_step, response_type):
     total_time = 120
     time_left = get_time_left(total_time)
-    expired = time_left <= 0
+
+    if not st.session_state.write_done:
+        st_autorefresh(interval=1000, key=f"{response_type}_refresh")
+
+    st.subheader(title)
     st.write(f"⏳ Time left: {time_left} seconds")
 
-    if expired and not st.session_state.writing_done:
-        st.session_state.writing_done = True
-        st.rerun()
+    disabled = st.session_state.write_done or time_left <= 0
 
-    disabled = st.session_state.writing_done or expired
+    input_key = f"input_{key_answer}"
+    input_value = st.text_area("Write here:", value=st.session_state.get(key_answer, ""), key=input_key, height=150, disabled=disabled)
+    if not disabled:
+        st.session_state[key_answer] = input_value
 
-    # 입력값을 임시로 변수에 저장 (최신 상태 유지)
-    current_text = st.text_area("Write here:", value=st.session_state.get(key_name, ""), height=150, disabled=disabled, key=f"{key_name}_input")
-    st.session_state[key_name] = current_text
+    def on_write_done():
+        # 항상 최신 값 강제 저장
+        st.session_state[key_answer] = st.session_state.get(input_key, "").strip()
+        st.session_state.write_done = True
 
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        st.button("작성 완료", disabled=st.session_state.writing_done, key="writing_done_btn", on_click=lambda: st.session_state.update({"writing_done": True}))
-    with col2:
-        if st.session_state.writing_done:
-            if st.button("제출", key="submit_btn"):
-                answer = st.session_state.get(key_name, "").strip()
-                post_to_google_sheets(answer, response_type)
+    if time_left <= 0 and not st.session_state.write_done:
+        st.markdown("""
+        <script>
+        const doneBtn = document.getElementById("done_button");
+        if (doneBtn) { doneBtn.click(); }
+        </script>
+        """, unsafe_allow_html=True)
+
+    if not st.session_state.write_done:
+        st.button("작성 완료", key="done_button", on_click=on_write_done)
+    else:
+        cols = st.columns([1, 1])
+        with cols[0]:
+            st.button("작성 완료", disabled=True)
+        with cols[1]:
+            if st.button("제출"):
+                final_answer = st.session_state.get(key_answer, "").strip()
+                post_to_google_sheets(final_answer, response_type)
                 move_to_step(next_step)
 
-# 각 단계 정의
+# 단계: 지문 작성
 def passage_write_step():
-    writing_step(
-        "✍️ Reconstruct the Passage (120s)",
-        "passage_answer",
-        "email_write",
-        "passage",
-        "Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**"
-    )
+    write_step("✍️ Reconstruct the Passage (120s)", "passage_answer", "email_write", "passage")
 
+# 단계: 이메일 작성
 def email_write_step():
-    writing_step(
-        "📧 Email Writing (120s)",
-        "email_answer",
-        "done",
-        "email",
-        "Based on the situation below, write a professional and polite email requesting a one-week extension."
-    )
-    st.info(st.session_state.selected_email)
+    write_step("📧 Email Writing (120s)", "email_answer", "done", "email")
 
+# 단계: 완료
 def done_step():
     st.success("🎉 All tasks are complete! Well done!")
 
