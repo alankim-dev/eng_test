@@ -88,7 +88,7 @@ def passage_read_step():
         move_to_step("passage_write")
 
 # 작성 공통 처리
-def write_step(title, instruction, source_text, key_answer, next_step, response_type):
+def write_step(title, key_answer, next_step, response_type, prompt_text, show_info=None):
     total_time = 120
     time_left = get_time_left(total_time)
 
@@ -96,8 +96,10 @@ def write_step(title, instruction, source_text, key_answer, next_step, response_
         st_autorefresh(interval=1000, key=f"{response_type}_refresh")
 
     st.subheader(title)
-    st.markdown(instruction)
-    st.info(source_text)
+    st.markdown(prompt_text)
+    if show_info:
+        st.info(show_info)
+
     st.write(f"⏳ Time left: {time_left} seconds")
 
     disabled = st.session_state.write_done or time_left <= 0
@@ -135,22 +137,21 @@ def write_step(title, instruction, source_text, key_answer, next_step, response_
 def passage_write_step():
     write_step(
         "✍️ Reconstruct the Passage (120s)",
-        "Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.",
-        st.session_state.selected_passage,
         "passage_answer",
         "email_write",
-        "passage"
+        "passage",
+        "Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**"
     )
 
 # 단계: 이메일 작성
 def email_write_step():
     write_step(
         "📧 Email Writing (120s)",
-        "Below is a situation. Based on it, write a professional and polite email that requests a one-week extension.",
-        st.session_state.selected_email,
         "email_answer",
         "done",
-        "email"
+        "email",
+        "Below is a situation. Based on it, write a professional and polite email that requests a one-week extension.",
+        st.session_state.selected_email
     )
 
 # 단계: 완료
