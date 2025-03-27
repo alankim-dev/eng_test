@@ -43,6 +43,22 @@ initialize_session_state()
 
 st.title("NSUS English Test")
 
+# 복사 방지 CSS 삽입
+st.markdown("""
+    <style>
+    * {
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+    }
+    textarea, input {
+        user-select: text !important;
+        -webkit-user-select: text !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # 단계 이동
 def move_to_step(next_step):
     st.session_state.step = next_step
@@ -89,7 +105,7 @@ def passage_read_step():
         move_to_step("passage_write")
 
 # 작성 공통 처리
-def write_step(title, instruction, show_source, source_text, key_answer, next_step, response_type):
+def write_step(title, instruction, source_text, key_answer, next_step, response_type):
     total_time = 120
     time_left = get_time_left(total_time)
 
@@ -98,8 +114,6 @@ def write_step(title, instruction, show_source, source_text, key_answer, next_st
 
     st.subheader(title)
     st.markdown(instruction)
-    if show_source:
-        st.info(source_text)
     st.write(f"⏳ Time left: {time_left} seconds")
 
     disabled = st.session_state.write_done or time_left <= 0
@@ -143,7 +157,6 @@ def passage_write_step():
     write_step(
         "✍️ Reconstruct the Passage (120s)",
         "Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.",
-        False,
         "",
         "passage_answer",
         "email_write",
@@ -155,7 +168,6 @@ def email_write_step():
     write_step(
         "📧 Email Writing (120s)",
         "Below is a situation. Based on it, write a professional and polite email that requests a one-week extension.",
-        True,
         st.session_state.selected_email,
         "email_answer",
         "done",
