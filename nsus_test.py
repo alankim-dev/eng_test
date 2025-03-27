@@ -98,19 +98,18 @@ def write_step(title, key_answer, next_step, response_type):
     st.subheader(title)
     st.write(f"⏳ Time left: {time_left} seconds")
 
-    disabled = st.session_state.write_done or time_left <= 0
+    expired = time_left <= 0
+    disabled = st.session_state.write_done or expired
 
     input_key = f"input_{key_answer}"
     input_value = st.text_area("Write here:", value=st.session_state.get(key_answer, ""), key=input_key, height=150, disabled=disabled)
-    if not disabled:
-        st.session_state[key_answer] = input_value
+    st.session_state[key_answer] = input_value  # 최신 입력 항상 반영
 
     def on_write_done():
-        # 항상 최신 값 강제 저장
-        st.session_state[key_answer] = st.session_state.get(input_key, "").strip()
         st.session_state.write_done = True
+        st.session_state[key_answer] = st.session_state.get(input_key, "").strip()
 
-    if time_left <= 0 and not st.session_state.write_done:
+    if expired and not st.session_state.write_done:
         st.markdown("""
         <script>
         const doneBtn = document.getElementById("done_button");
