@@ -100,25 +100,7 @@ def passage_write_step():
 
     st.text_area("Write the passage:", key="passage_answer", height=150, disabled=disabled)
 
-    st.markdown("""
-    <style>#hidden_submit_passage {display: none;}</style>
-    """, unsafe_allow_html=True)
-
-    js_code = f"""
-    <script>
-    var timeLeft = {total_time};
-    var interval = setInterval(function() {{
-         timeLeft--;
-         if(timeLeft <= 0) {{
-             clearInterval(interval);
-             document.getElementById('hidden_submit_passage').click();
-         }}
-    }}, 1000);
-    </script>
-    """
-    st.markdown(js_code, unsafe_allow_html=True)
-
-    if st.button("Submit Answer", key="hidden_submit_passage"):
+    if st.button("Submit Answer"):
         post_to_google_sheets(st.session_state.passage_answer, "passage")
         st.session_state.submitted = True
         move_to_step("email_write")
@@ -138,25 +120,7 @@ def email_write_step():
 
     st.text_area("Write your email:", key="email_answer", height=150, disabled=disabled)
 
-    st.markdown("""
-    <style>#hidden_submit_email {display: none;}</style>
-    """, unsafe_allow_html=True)
-
-    js_code_email = f"""
-    <script>
-    var timeLeftEmail = {total_time};
-    var intervalEmail = setInterval(function() {{
-         timeLeftEmail--;
-         if(timeLeftEmail <= 0) {{
-             clearInterval(intervalEmail);
-             document.getElementById('hidden_submit_email').click();
-         }}
-    }}, 1000);
-    </script>
-    """
-    st.markdown(js_code_email, unsafe_allow_html=True)
-
-    if st.button("Submit Answer", key="hidden_submit_email"):
+    if st.button("Submit Answer"):
         post_to_google_sheets(st.session_state.email_answer, "email")
         st.session_state.submitted = True
         move_to_step("done")
