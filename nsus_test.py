@@ -36,10 +36,10 @@ def initialize_session_state():
         st.session_state.passage_answer = ""
     if "email_answer" not in st.session_state:
         st.session_state.email_answer = ""
-    if "passage_submit_triggered" not in st.session_state:
-        st.session_state.passage_submit_triggered = False
-    if "email_submit_triggered" not in st.session_state:
-        st.session_state.email_submit_triggered = False
+    if "passage_time_over" not in st.session_state:
+        st.session_state.passage_time_over = False
+    if "email_time_over" not in st.session_state:
+        st.session_state.email_time_over = False
 
 initialize_session_state()
 
@@ -95,21 +95,15 @@ def passage_write_step():
     st.subheader("✍️ Reconstruct the Passage (120s)")
 
     time_left = get_time_left(120)
-    disabled = time_left <= 0
     st.write(f"⏳ Time left: {time_left} seconds")
 
-    st.text_area("Write the passage:", key="passage_answer", height=150, disabled=disabled)
+    if time_left <= 0:
+        st.session_state.passage_time_over = True
+        st.warning("Time is up. Please click the Submit button to continue.")
 
-    submit_clicked = st.button("Submit")
-    if submit_clicked:
-        st.session_state.passage_submit_triggered = True
+    st.text_area("Write the passage:", key="passage_answer", height=150, disabled=st.session_state.passage_time_over)
 
-    if time_left <= 0 and not st.session_state.submitted:
-        st.session_state.submitted = True
-        st.session_state.passage_submit_triggered = True
-
-    if st.session_state.passage_submit_triggered:
-        st.session_state.passage_submit_triggered = False
+    if st.button("Submit"):
         post_to_google_sheets(st.session_state.passage_answer, "passage")
         move_to_step("email_write")
 
@@ -119,21 +113,15 @@ def email_write_step():
     st.subheader("📧 Email Writing (120s)")
 
     time_left = get_time_left(120)
-    disabled = time_left <= 0
     st.write(f"⏳ Time left: {time_left} seconds")
 
-    st.text_area("Write your email:", key="email_answer", height=150, disabled=disabled)
+    if time_left <= 0:
+        st.session_state.email_time_over = True
+        st.warning("Time is up. Please click the Submit button to continue.")
 
-    submit_clicked = st.button("Submit")
-    if submit_clicked:
-        st.session_state.email_submit_triggered = True
+    st.text_area("Write your email:", key="email_answer", height=150, disabled=st.session_state.email_time_over)
 
-    if time_left <= 0 and not st.session_state.submitted:
-        st.session_state.submitted = True
-        st.session_state.email_submit_triggered = True
-
-    if st.session_state.email_submit_triggered:
-        st.session_state.email_submit_triggered = False
+    if st.button("Submit"):
         post_to_google_sheets(st.session_state.email_answer, "email")
         move_to_step("done")
 
