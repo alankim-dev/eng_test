@@ -29,8 +29,6 @@ def initialize_session_state():
         st.session_state.selected_email = random.choice(email_tasks)
     if "start_time" not in st.session_state:
         st.session_state.start_time = None
-    if "submitted" not in st.session_state:
-        st.session_state.submitted = False
     if "passage_answer" not in st.session_state:
         st.session_state.passage_answer = ""
     if "email_answer" not in st.session_state:
@@ -50,7 +48,6 @@ def get_time_left(total_seconds):
 def move_to_step(next_step):
     st.session_state.step = next_step
     st.session_state.start_time = time.time()
-    st.session_state.submitted = False
     st.rerun()
 
 def post_to_google_sheets(response_text, response_type):
@@ -81,22 +78,23 @@ def intro_step():
 def passage_read_step():
     from streamlit_autorefresh import st_autorefresh
     st_autorefresh(interval=1000, limit=0)
+
     st.subheader("📄 Passage Reconstruction (Reading)")
     st.markdown("You have **30 seconds** to read the passage. Then it will disappear.")
     st.info(st.session_state.selected_passage)
-    
+
     time_left = get_time_left(30)
     if time_left < 0:
         time_left = 0
     st.write(f"⏳ Time left: **{time_left} seconds**")
 
-    if time_left <= 0 and not st.session_state.submitted:
-        st.session_state.submitted = True
+    if time_left <= 0:
         move_to_step("passage_write")
 
 def passage_write_step():
     from streamlit_autorefresh import st_autorefresh
     st_autorefresh(interval=1000, limit=0)
+
     st.subheader("✍️ Reconstruct the Passage (2 minutes)")
     st.markdown("Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**")
 
@@ -104,24 +102,23 @@ def passage_write_step():
     time_left = get_time_left(total_time)
     if time_left < 0:
         time_left = 0
+
     st.write(f"⏳ Time left: **{time_left} seconds**")
 
-    if time_left <= 0 and not st.session_state.submitted:
-        st.session_state.submitted = True
-        save_passage_answer()
-        move_to_step("email_write")
-        return
+    disabled = time_left <= 0
+    st.text_area("Write the passage from memory:", key="passage_answer", height=150, disabled=disabled)
 
-    st.text_area("Write the passage from memory:", key="passage_answer", height=150)
+    if disabled:
+        st.warning("⏰ 시간이 종료되었습니다. 답안을 수정할 수 없습니다. [Submit Answer] 버튼을 눌러주세요.")
 
-    if st.button("Submit Answer") and not st.session_state.submitted:
-        st.session_state.submitted = True
+    if st.button("Submit Answer"):
         save_passage_answer()
         move_to_step("email_write")
 
 def email_write_step():
     from streamlit_autorefresh import st_autorefresh
     st_autorefresh(interval=1000, limit=0)
+
     st.subheader("📧 Email Writing (2 minutes)")
     st.markdown("Below is a situation. Based on it, write a professional and polite email that requests a one-week extension.")
     st.info(st.session_state.selected_email)
@@ -130,18 +127,16 @@ def email_write_step():
     time_left = get_time_left(total_time)
     if time_left < 0:
         time_left = 0
+
     st.write(f"⏳ Time left: **{time_left} seconds**")
 
-    if time_left <= 0 and not st.session_state.submitted:
-        st.session_state.submitted = True
-        save_email_answer()
-        move_to_step("done")
-        return
+    disabled = time_left <= 0
+    st.text_area("Write your email here:", key="email_answer", height=150, disabled=disabled)
 
-    st.text_area("Write your email here:", key="email_answer", height=150)
+    if disabled:
+        st.warning("⏰ 시간이 종료되었습니다. 답안을 수정할 수 없습니다. [Submit Answer] 버튼을 눌러주세요.")
 
-    if st.button("Submit Answer") and not st.session_state.submitted:
-        st.session_state.submitted = True
+    if st.button("Submit Answer"):
         save_email_answer()
         move_to_step("done")
 
