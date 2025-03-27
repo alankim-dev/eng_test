@@ -36,6 +36,8 @@ def initialize_session_state():
         st.session_state.passage_answer = ""
     if "email_answer" not in st.session_state:
         st.session_state.email_answer = ""
+    if "writing_done" not in st.session_state:
+        st.session_state.writing_done = False
 
 initialize_session_state()
 
@@ -46,6 +48,7 @@ def move_to_step(next_step):
     st.session_state.step = next_step
     st.session_state.start_time = time.time()
     st.session_state.submitted = False
+    st.session_state.writing_done = False
     st.rerun()
 
 # 시간 계산
@@ -82,45 +85,50 @@ def passage_read_step():
     if time_left <= 0:
         move_to_step("passage_write")
 
-# 공통 작성 단계
+# 작성 단계 공통
 
-def writing_form_step(title, key_name, next_step, response_type, prompt_text):
+def writing_step(title, key_name, next_step, response_type, prompt_text):
     st_autorefresh(interval=1000, key=f"{response_type}_refresh")
     st.subheader(title)
     st.markdown(prompt_text)
-
     total_time = 120
     time_left = get_time_left(total_time)
-    st.write(f"⏳ Time left: {time_left} seconds")
     expired = time_left <= 0
+    st.write(f"⏳ Time left: {time_left} seconds")
 
     if expired:
         st.warning("⏰ Time is up. Please click the Submit button to continue.")
-        st.markdown("""
-        <script>
-        const btn = window.parent.document.querySelector('button[data-testid="form-submit-button"]');
-        if (btn) btn.click();
-        </script>
-        """, unsafe_allow_html=True)
+        if not st.session_state.writing_done:
+            st.markdown("""
+            <script>
+            const btn = window.parent.document.querySelector('button[data-testid="writing-done"]');
+            if (btn) btn.click();
+            </script>
+            """, unsafe_allow_html=True)
 
-    with st.form(f"form_{response_type}"):
-        answer = st.text_area("Write here:", value=st.session_state.get(key_name, ""), key=key_name, height=150, disabled=expired)
-        submitted = st.form_submit_button("Submit")
+    disabled = expired or st.session_state.writing_done
+    st.text_area("Write here:", key=key_name, height=150, disabled=disabled)
 
-        if submitted:
-            st.session_state[key_name] = answer  # 강제 업데이트
-            post_to_google_sheets(st.session_state.get(key_name, "").strip(), response_type)
+    if not st.session_state.writing_done:
+        if st.button("작성 완료", key="writing-done"):
+            st.session_state.writing_done = True
+            st.rerun()
+
+    if st.session_state.writing_done:
+        if st.button("제출", key="submit-answer"):
+            answer = st.session_state.get(key_name, "").strip()
+            post_to_google_sheets(answer, response_type)
             move_to_step(next_step)
 
 # 지문 작성 단계
 def passage_write_step():
-    writing_form_step("✍️ Reconstruct the Passage (120s)", "passage_answer", "email_write", "passage",
-                      "Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**")
+    writing_step("✍️ Reconstruct the Passage (120s)", "passage_answer", "email_write", "passage",
+                 "Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**")
 
 # 이메일 작성 단계
 def email_write_step():
-    writing_form_step("📧 Email Writing (120s)", "email_answer", "done", "email",
-                      "Based on the situation below, write a professional and polite email requesting a one-week extension.")
+    writing_step("📧 Email Writing (120s)", "email_answer", "done", "email",
+                 "Based on the situation below, write a professional and polite email requesting a one-week extension.")
     st.info(st.session_state.selected_email)
 
 # 완료 단계
