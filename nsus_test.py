@@ -10,14 +10,14 @@ GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbxHUtX406TMnBYKAk2M
 
 # 지문 및 과제
 passages = [
-    "Our new product line will be launched next month...",
-    "We have recently updated our internal communication guidelines...",
-    "To improve cross-functional collaboration, we will be launching...",
-    "The finance team is conducting the quarterly budget review...",
-    "Customer feedback has shown a strong interest in faster response times..."
+    "Our new product line will be launched next month. We are planning a series of promotional events to increase awareness. All team members are expected to contribute ideas for marketing strategies. Please submit your suggestions by Friday afternoon.",
+    "We have recently updated our internal communication guidelines to ensure that everyone stays informed and aligned. Managers are responsible for sharing weekly updates with their teams. Please check your email every Monday morning for the latest announcements and summaries.",
+    "To improve cross-functional collaboration, we will be launching a new project management tool starting next week. Training sessions will be provided on Wednesday and Thursday. Attendance is mandatory for all team members who manage or participate in projects.",
+    "The finance team is conducting the quarterly budget review, and all departments must submit their expense reports by the end of this week. Delayed submissions may result in your department's budget being frozen until the next quarter.",
+    "Customer feedback has shown a strong interest in faster response times. To address this, we are adjusting our support team shifts starting Monday. Please review the updated schedule and confirm your availability with your manager by Friday."
 ]
 email_tasks = [
-    "One of our team members got sick suddenly, so it’s hard to finish the project on time..."
+    "One of our team members got sick suddenly, so it’s hard to finish the project on time. We asked another team member for help to complete it as quickly as possible. However, given the situation, we need to ask the manager if we can extend the deadline by one week."
 ]
 
 # 상태 초기화
@@ -70,7 +70,7 @@ def post_to_google_sheets(response_text, response_type):
 
 # 단계: 인트로
 def intro_step():
-    st.subheader("\U0001F4DD NSUS English Test")
+    st.subheader("📝 NSUS English Test")
     st.markdown("This is a two-part writing test including passage reconstruction and email writing.")
     if st.button("Start Test"):
         move_to_step("passage_read")
@@ -78,60 +78,84 @@ def intro_step():
 # 단계: 읽기
 def passage_read_step():
     st_autorefresh(interval=1000, key="read_refresh")
-    st.subheader("\U0001F4C4 Passage Reading (30s)")
+    st.subheader("📄 Passage Reading (30s)")
     st.info(st.session_state.selected_passage)
 
     time_left = get_time_left(30)
-    st.write(f"\u23F3 Time left: {time_left} seconds")
+    st.write(f"⏳ Time left: {time_left} seconds")
 
     if time_left <= 0:
         move_to_step("passage_write")
 
-# 작성 공통 처리 (form 기반 안정 저장)
-def writing_form_step(title, key_name, next_step, response_type):
+# 작성 공통 처리
+def write_step(title, instruction, source_text, key_answer, next_step, response_type):
     total_time = 120
     time_left = get_time_left(total_time)
 
     if not st.session_state.write_done:
         st_autorefresh(interval=1000, key=f"{response_type}_refresh")
 
-    st.subheader(f"{title} ({total_time}s)")
-    st.write(f"\u23F3 Time left: {time_left} seconds")
+    st.subheader(title)
+    st.markdown(instruction)
+    st.info(source_text)
+    st.write(f"⏳ Time left: {time_left} seconds")
 
     disabled = st.session_state.write_done or time_left <= 0
 
-    if time_left <= 0 and not st.session_state.write_done:
-        st.warning("Time is up. Please click the Submit button to continue.")
+    input_key = f"input_{key_answer}"
+    input_value = st.text_area("Write here:", value=st.session_state.get(key_answer, ""), key=input_key, height=150, disabled=disabled)
+    if not disabled:
+        st.session_state[key_answer] = input_value
+
+    def on_write_done():
+        st.session_state[key_answer] = st.session_state.get(input_key, "").strip()
         st.session_state.write_done = True
 
-    with st.form(f"form_{response_type}"):
-        answer = st.text_area("Write here:",
-                              value=st.session_state.get(key_name, ""),
-                              key=f"input_{key_name}",
-                              height=150,
-                              disabled=disabled)
+    if time_left <= 0 and not st.session_state.write_done:
+        st.markdown("""
+        <script>
+        const doneBtn = document.getElementById("done_button");
+        if (doneBtn) { doneBtn.click(); }
+        </script>
+        """, unsafe_allow_html=True)
 
-        submit_form = st.form_submit_button("작성 완료" if not disabled else "제출")
-
-        if submit_form:
-            st.session_state[key_name] = answer.strip()
-            if not st.session_state.write_done:
-                st.session_state.write_done = True
-            else:
-                post_to_google_sheets(st.session_state.get(key_name, ""), response_type)
+    if not st.session_state.write_done:
+        st.button("작성 완료", key="done_button", on_click=on_write_done)
+    else:
+        cols = st.columns([1, 1])
+        with cols[0]:
+            st.button("작성 완료", disabled=True)
+        with cols[1]:
+            if st.button("제출"):
+                final_answer = st.session_state.get(key_answer, "").strip()
+                post_to_google_sheets(final_answer, response_type)
                 move_to_step(next_step)
 
 # 단계: 지문 작성
 def passage_write_step():
-    writing_form_step("\u270D\ufe0f Reconstruct the Passage", "passage_answer", "email_write", "passage")
+    write_step(
+        "✍️ Reconstruct the Passage (120s)",
+        "Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.",
+        st.session_state.selected_passage,
+        "passage_answer",
+        "email_write",
+        "passage"
+    )
 
 # 단계: 이메일 작성
 def email_write_step():
-    writing_form_step("\U0001F4E7 Email Writing", "email_answer", "done", "email")
+    write_step(
+        "📧 Email Writing (120s)",
+        "Below is a situation. Based on it, write a professional and polite email that requests a one-week extension.",
+        st.session_state.selected_email,
+        "email_answer",
+        "done",
+        "email"
+    )
 
 # 단계: 완료
 def done_step():
-    st.success("\U0001F389 All tasks are complete! Well done!")
+    st.success("🎉 All tasks are complete! Well done!")
 
 # 실행
 if st.session_state.step == "intro":
