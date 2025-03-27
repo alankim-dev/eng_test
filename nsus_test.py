@@ -30,6 +30,8 @@ def initialize_session_state():
         st.session_state.selected_email = random.choice(email_tasks)
     if "start_time" not in st.session_state:
         st.session_state.start_time = None
+    if "write_done" not in st.session_state:
+        st.session_state.write_done = False
     if "submitted" not in st.session_state:
         st.session_state.submitted = False
     if "passage_answer" not in st.session_state:
@@ -45,6 +47,7 @@ st.title("NSUS English Test")
 def move_to_step(next_step):
     st.session_state.step = next_step
     st.session_state.start_time = time.time()
+    st.session_state.write_done = False
     st.session_state.submitted = False
     st.rerun()
 
@@ -81,53 +84,76 @@ def passage_read_step():
     time_left = get_time_left(30)
     st.write(f"⏳ Time left: {time_left} seconds")
 
-    if time_left <= 0 and not st.session_state.submitted:
-        st.session_state.submitted = True
+    if time_left <= 0:
         move_to_step("passage_write")
 
 # 단계: 지문 작성
 def passage_write_step():
-    if not st.session_state.submitted:
+    total_time = 120
+    time_left = get_time_left(total_time)
+
+    if not st.session_state.write_done:
         st_autorefresh(interval=1000, key="passage_refresh")
 
     st.subheader("✍️ Reconstruct the Passage (120s)")
-
-    total_time = 120
-    time_left = get_time_left(total_time)
     st.write(f"⏳ Time left: {time_left} seconds")
 
-    disabled = time_left <= 0
-    if disabled:
-        st.warning("Time is up. Please click the Submit button to continue.")
+    disabled = not st.session_state.write_done and time_left <= 0
 
     st.text_area("Write the passage:", key="passage_answer", height=150, disabled=disabled)
 
-    if st.button("Submit Answer"):
-        post_to_google_sheets(st.session_state.passage_answer, "passage")
-        st.session_state.submitted = True
-        move_to_step("email_write")
-
-# 단계: 이메일 작성
-def email_write_step():
-    if not st.session_state.submitted:
-        st_autorefresh(interval=1000, key="email_refresh")
-
-    st.subheader("📧 Email Writing (120s)")
-
-    total_time = 120
-    time_left = get_time_left(total_time)
-    st.write(f"⏳ Time left: {time_left} seconds")
-
-    disabled = time_left <= 0
     if disabled:
         st.warning("Time is up. Please click the Submit button to continue.")
 
+        # 작성 완료 자동 클릭 (JS로 강제)
+        st.markdown("""
+        <script>
+        document.getElementById('done_button').click();
+        </script>
+        """, unsafe_allow_html=True)
+
+    if not st.session_state.write_done:
+        if st.button("[작성 완료]", key="done_button"):
+            st.session_state.write_done = True
+            st.rerun()
+    else:
+        if st.button("Submit Answer"):
+            post_to_google_sheets(st.session_state.passage_answer, "passage")
+            move_to_step("email_write")
+
+# 단계: 이메일 작성
+def email_write_step():
+    total_time = 120
+    time_left = get_time_left(total_time)
+
+    if not st.session_state.write_done:
+        st_autorefresh(interval=1000, key="email_refresh")
+
+    st.subheader("📧 Email Writing (120s)")
+    st.write(f"⏳ Time left: {time_left} seconds")
+
+    disabled = not st.session_state.write_done and time_left <= 0
+
     st.text_area("Write your email:", key="email_answer", height=150, disabled=disabled)
 
-    if st.button("Submit Answer"):
-        post_to_google_sheets(st.session_state.email_answer, "email")
-        st.session_state.submitted = True
-        move_to_step("done")
+    if disabled:
+        st.warning("Time is up. Please click the Submit button to continue.")
+
+        # 작성 완료 자동 클릭 (JS로 강제)
+        st.markdown("""
+        <script>
+        document.getElementById('done_button').click();
+        </script>
+        """, unsafe_allow_html=True)
+
+    if not st.session_state.write_done:
+        if st.button("[작성 완료]", key="done_button"):
+            st.session_state.write_done = True
+            st.rerun()
+    else:
+        if st.button("Submit Answer"):
+            post_to_google_sheets(st.session_state.email_answer, "email")
+            move_to_step("done")
 
 # 단계: 완료
 def done_step():
