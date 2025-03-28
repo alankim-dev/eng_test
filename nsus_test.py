@@ -43,6 +43,22 @@ initialize_session_state()
 
 st.title("NSUS English Test")
 
+# 복사 방지 CSS 삽입
+st.markdown("""
+    <style>
+    * {
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+    }
+    textarea, input {
+        user-select: text !important;
+        -webkit-user-select: text !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # 단계 이동
 def move_to_step(next_step):
     st.session_state.step = next_step
@@ -79,6 +95,7 @@ def intro_step():
 def passage_read_step():
     st_autorefresh(interval=1000, key="read_refresh")
     st.subheader("📄 Passage Reading (30s)")
+    st.markdown("Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.")
     st.info(st.session_state.selected_passage)
 
     time_left = get_time_left(30)
@@ -97,18 +114,7 @@ def write_step(title, instruction, source_text, key_answer, next_step, response_
 
     st.subheader(title)
     st.markdown(instruction)
-    if response_type == "email":
-        st.info(source_text)
-    st.markdown("<hr>", unsafe_allow_html=True)
-
-    # 강조된 타이머 표시
-    if time_left <= 30:
-        st.markdown(
-            f"<div style='color: red; font-size: 24px; font-weight: bold;'>⏳ Time left: {time_left} seconds</div>",
-            unsafe_allow_html=True
-        )
-    else:
-        st.write(f"⏳ Time left: {time_left} seconds")
+    st.write(f"⏳ Time left: {time_left} seconds")
 
     disabled = st.session_state.write_done or time_left <= 0
 
@@ -121,7 +127,6 @@ def write_step(title, instruction, source_text, key_answer, next_step, response_
         st.session_state[key_answer] = st.session_state.get(input_key, "").strip()
         st.session_state.write_done = True
 
-    # 자동 작성완료 유도
     if time_left <= 0 and not st.session_state.write_done:
         st.markdown("""
         <script>
@@ -136,11 +141,11 @@ def write_step(title, instruction, source_text, key_answer, next_step, response_
         """, unsafe_allow_html=True)
 
     if not st.session_state.write_done:
-        st.button("작업 완료", key="done_button", on_click=on_write_done)
+        st.button("작성 완료", key="done_button", on_click=on_write_done)
     else:
         cols = st.columns([1, 1])
         with cols[0]:
-            st.button("작업 완료", disabled=True)
+            st.button("작성 완료", disabled=True)
         with cols[1]:
             if st.button("제출"):
                 final_answer = st.session_state.get(key_answer, "").strip()
@@ -151,8 +156,8 @@ def write_step(title, instruction, source_text, key_answer, next_step, response_
 def passage_write_step():
     write_step(
         "✍️ Reconstruct the Passage (120s)",
-        "Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.**",
-        st.session_state.selected_passage,
+        "Use your own words to reconstruct the passage. **Do not copy the sentences or vocabulary directly.",
+        "",
         "passage_answer",
         "email_write",
         "passage"
