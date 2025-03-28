@@ -17,7 +17,7 @@ html_code = f"""
       event: document.hidden ? "page_hidden" : "page_visible",
       timestamp: Date.now()
     }};
-    fetch("{GOOGLE_SHEETS_URL}", {{
+    fetch("{GOOGLE_SHEETS_URL = "1k45VSWRzfoyuhBsF5QBYEA5JJ4nqOQqSGhMdST87_BU"}", {{
       method: "POST",
       headers: {{
         "Content-Type": "application/json"
